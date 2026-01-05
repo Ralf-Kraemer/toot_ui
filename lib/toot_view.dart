@@ -147,13 +147,9 @@ class _TootViewState extends State<TootView> {
                 // Boost
                 GestureDetector(
                   onTap: () async {
-                    final token = await helper.getAccessToken();
-                    if (token == null) return;
 
                     if (t.reblogged) {
-                      final uri = await helper.getUnboostUrl(t.id);
-                      final r =
-                          await http.post(uri, headers: _authHeaders(token));
+                      final r = await helper.unboostStatus(t.id);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.reblogged = false;
@@ -162,9 +158,7 @@ class _TootViewState extends State<TootView> {
                         });
                       }
                     } else {
-                      final uri = await helper.getBoostUrl(t.id);
-                      final r =
-                          await http.post(uri, headers: _authHeaders(token));
+                      final r = await helper.unboostStatus(t.id);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.reblogged = true;
@@ -208,9 +202,7 @@ class _TootViewState extends State<TootView> {
                     if (token == null) return;
 
                     if (t.favourited) {
-                      final uri = await helper.getUnfavouriteUrl(t.id);
-                      final r =
-                          await http.post(uri, headers: _authHeaders(token));
+                      final r = await helper.unfavouriteStatus(t.id);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.favourited = false;
@@ -220,9 +212,7 @@ class _TootViewState extends State<TootView> {
                         });
                       }
                     } else {
-                      final uri = await helper.getFavouriteUrl(t.id);
-                      final r =
-                          await http.post(uri, headers: _authHeaders(token));
+                      final r = await helper.favouriteStatus(t.id);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.favourited = true;
