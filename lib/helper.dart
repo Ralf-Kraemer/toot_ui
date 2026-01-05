@@ -22,8 +22,16 @@ class Helper {
     if (instance == null || instance.isEmpty) {
       throw StateError('Home instance name is not set');
     }
-    return Uri.https(instance, path, query);
+
+    // Strip scheme if present
+    final host = instance.replaceAll(RegExp(r'^https?://'), '');
+
+    // Remove leading slash from path if present
+    final cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+    return Uri.https(host, cleanPath, query);
   }
+
 
   // ===== Internal HTTP helper =====
   Future<dynamic> _requestJson(String method, Uri url, [Map<String, dynamic>? body]) async {
