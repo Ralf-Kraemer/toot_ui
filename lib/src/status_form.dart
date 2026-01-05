@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'helper.dart';
+import '../helper.dart';
 
 class StatusForm extends StatefulWidget {
   /// Optional: if replying to a status

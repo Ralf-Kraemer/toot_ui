@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'helper.dart';
+import '../helper.dart';
 
 class InlineReplyForm extends StatefulWidget {
   final String inReplyToId;
