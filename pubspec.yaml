@@ -22,7 +22,7 @@ dependencies:
   json_annotation: ^4.4.0
   golden_toolkit: ^0.13.0
   carousel_slider: ^5.0.0
-  share_plus: ^10.1.4
+  share_plus: ^11.0.0
   shared_preferences: ^2.5.4
 
 dev_dependencies:
