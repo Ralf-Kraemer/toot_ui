@@ -1,6 +1,6 @@
 name: toot_ui
 description: Fork of tweet_ui. Show toots from a Mastodon API JSON on Android and iOS. Support for toots with 1-4 photos, Video, GIFs, hashtags, mentions, symbols, urls, quoted toots and retoots.
-version: 4.0.5
+version: 4.0.6
 homepage: https://github.com/schibsted/tweet_ui
 
 environment:
@@ -13,9 +13,6 @@ dependencies:
   cached_network_image: ^3.4.1
   collection: ^1.15.0
   intl: ^0.20.0
-  better_player:
-    git:
-      url: https://github.com/Ralf-Kraemer/better_player
   photo_view: ^0.14.0
   url_launcher: ^6.0.20
   html_unescape: ^2.0.0
