@@ -143,7 +143,7 @@ class _StatusFormState extends State<StatusForm> {
               Wrap(
                 spacing: 16,
                 runSpacing: 8,
-                children: [
+                children: [/*
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -155,7 +155,7 @@ class _StatusFormState extends State<StatusForm> {
                       ),
                       const Text('Sensitive / NSFW'),
                     ],
-                  ),
+                  ),*/
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -204,10 +204,10 @@ class _StatusFormState extends State<StatusForm> {
                     child: ElevatedButton.icon(
                       onPressed: _isPosting ? null : _pickMedia,
                       icon: _selectedMedia.isEmpty
-                          ? const Icon(Icons.image)
+                          ? const Icon(Icons.browse_gallery)
                           : const Icon(Icons.clear),
                       label: _selectedMedia.isEmpty
-                          ? const Text('Attach Media')
+                          ? const Text('Attach')
                           : const Text('Clear'),
                     ),
                   ),

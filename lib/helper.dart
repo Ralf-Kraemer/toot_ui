@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:ffi';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -86,7 +87,7 @@ class Helper {
   Future<dynamic> _deleteJson(Uri url) =>
       _requestJson('DELETE', url);
 
-  // ===== Media upload =====
+  // ===== Media upload (fixed MIME type) =====
   Future<List<int>> uploadMediaFiles(List<XFile> files) async {
     if (files.isEmpty) return [];
 
@@ -104,11 +105,44 @@ class Helper {
     final mediaIds = <int>[];
 
     for (final file in files) {
+      if (!await File(file.path).exists()) {
+        throw Exception('File does not exist: ${file.path}');
+      }
+
+      // Detect MIME type from file extension
+      String ext = file.path.split('.').last.toLowerCase();
+      String mimeType;
+      switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+          mimeType = 'image/jpeg';
+          break;
+        case 'png':
+          mimeType = 'image/png';
+          break;
+        case 'gif':
+          mimeType = 'image/gif';
+          break;
+        case 'mp4':
+          mimeType = 'video/mp4';
+          break;
+        case 'mov':
+          mimeType = 'video/quicktime';
+          break;
+        case 'mp3':
+          mimeType = 'audio/mpeg';
+          break;
+        default:
+          mimeType = 'application/octet-stream';
+      }
+
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $token'
-        ..files.add(
-          await http.MultipartFile.fromPath('file', file.path),
-        );
+        ..files.add(await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          contentType: MediaType(mimeType.split('/')[0], mimeType.split('/')[1]),
+        ));
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
@@ -147,21 +181,11 @@ class Helper {
       'status': status,
     };
 
-    if (inReplyToId != null) {
-      body['in_reply_to_id'] = inReplyToId;
-    }
-    if (sensitive != null) {
-      body['sensitive'] = sensitive;
-    }
-    if (private != null) {
-      body['visibility'] = private ? 'private' : 'public';
-    }
-    if (spoilerText != null) {
-      body['spoiler_text'] = spoilerText;
-    }
-    if (mediaIDs != null && mediaIDs.isNotEmpty) {
-      body['media_ids'] = mediaIDs;
-    }
+    if (inReplyToId != null) body['in_reply_to_id'] = inReplyToId;
+    if (sensitive != null) body['sensitive'] = sensitive;
+    if (private != null) body['visibility'] = private ? 'private' : 'public';
+    if (spoilerText != null) body['spoiler_text'] = spoilerText;
+    if (mediaIDs != null && mediaIDs.isNotEmpty) body['media_ids'] = mediaIDs;
 
     return _postJson(url, body);
   }
