@@ -10,7 +10,6 @@ import 'package:toot_ui/src/url_launcher.dart';
 import 'package:toot_ui/src/view_mode.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:http/http.dart' as http;
 import 'package:toot_ui/helper.dart';
 
 

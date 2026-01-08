@@ -17,8 +17,7 @@ class Helper {
       setPrefString('accessToken', value);
 
   // ===== Instance =====
-  Future<String?> getHomeInstanceName() =>
-      getPrefString('homeInstanceName');
+  Future<String?> getHomeInstanceName() => getPrefString('homeInstanceName');
   Future<bool> setHomeInstanceName(String value) =>
       setPrefString('homeInstanceName', value);
 
@@ -31,7 +30,6 @@ class Helper {
 
     final host = instance.replaceAll(RegExp(r'^https?://'), '');
     final cleanPath = path.startsWith('/') ? path.substring(1) : path;
-
     return Uri.https(host, cleanPath, query);
   }
 
@@ -82,12 +80,10 @@ class Helper {
 
   Future<dynamic> _postJson(Uri url, [Map<String, dynamic>? body]) =>
       _requestJson('POST', url, body);
-  Future<dynamic> _getJson(Uri url) =>
-      _requestJson('GET', url);
-  Future<dynamic> _deleteJson(Uri url) =>
-      _requestJson('DELETE', url);
+  Future<dynamic> _getJson(Uri url) => _requestJson('GET', url);
+  Future<dynamic> _deleteJson(Uri url) => _requestJson('DELETE', url);
 
-  // ===== Media upload (fixed MIME type) =====
+  // ===== Media upload (with MIME fix) =====
   Future<List<int>> uploadMediaFiles(List<XFile> files) async {
     if (files.isEmpty) return [];
 
@@ -101,40 +97,17 @@ class Helper {
 
     final host = instance.replaceAll(RegExp(r'^https?://'), '');
     final uri = Uri.https(host, 'api/v2/media');
-
     final mediaIds = <int>[];
 
     for (final file in files) {
-      if (!await File(file.path).exists()) {
+      final f = File(file.path);
+      if (!await f.exists()) {
         throw Exception('File does not exist: ${file.path}');
       }
 
-      // Detect MIME type from file extension
-      String ext = file.path.split('.').last.toLowerCase();
-      String mimeType;
-      switch (ext) {
-        case 'jpg':
-        case 'jpeg':
-          mimeType = 'image/jpeg';
-          break;
-        case 'png':
-          mimeType = 'image/png';
-          break;
-        case 'gif':
-          mimeType = 'image/gif';
-          break;
-        case 'mp4':
-          mimeType = 'video/mp4';
-          break;
-        case 'mov':
-          mimeType = 'video/quicktime';
-          break;
-        case 'mp3':
-          mimeType = 'audio/mpeg';
-          break;
-        default:
-          mimeType = 'application/octet-stream';
-      }
+      // Detect MIME type from extension
+      final ext = file.path.split('.').last.toLowerCase();
+      final mimeType = _detectMimeType(ext);
 
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $token'
@@ -166,6 +139,26 @@ class Helper {
     return mediaIds;
   }
 
+  String _detectMimeType(String ext) {
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      case 'mp3':
+        return 'audio/mpeg';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
   // ===== Status actions =====
   Future<dynamic> postStatus(
     String status, {
@@ -176,10 +169,7 @@ class Helper {
     List<int>? mediaIDs,
   }) async {
     final url = await _buildUrl('/api/v1/statuses');
-
-    final body = <String, dynamic>{
-      'status': status,
-    };
+    final body = <String, dynamic>{'status': status};
 
     if (inReplyToId != null) body['in_reply_to_id'] = inReplyToId;
     if (sensitive != null) body['sensitive'] = sensitive;
@@ -192,80 +182,61 @@ class Helper {
 
   Future<dynamic> boostStatus(String statusId) async =>
       _postJson(await _buildUrl('/api/v1/statuses/$statusId/reblog'));
-
   Future<dynamic> unboostStatus(String statusId) async =>
       _postJson(await _buildUrl('/api/v1/statuses/$statusId/unreblog'));
-
   Future<dynamic> favouriteStatus(String statusId) async =>
       _postJson(await _buildUrl('/api/v1/statuses/$statusId/favourite'));
-
   Future<dynamic> unfavouriteStatus(String statusId) async =>
       _postJson(await _buildUrl('/api/v1/statuses/$statusId/unfavourite'));
-
   Future<dynamic> deleteStatus(String statusId) async =>
       _deleteJson(await _buildUrl('/api/v1/statuses/$statusId'));
 
-  // ===== Timelines =====
-  Future<List<dynamic>> getHomeTimeline({
-    int? limit,
-    String? maxId,
-    String? sinceId,
-  }) async {
+  // ===== Timeline helpers =====
+  Future<List<dynamic>> _fetchTimeline(String path, {int? limit, String? maxId, String? sinceId}) async {
     final query = <String, String>{};
     if (limit != null) query['limit'] = '$limit';
     if (maxId != null) query['max_id'] = maxId;
     if (sinceId != null) query['since_id'] = sinceId;
 
-    final json = await _getJson(
-      await _buildUrl(
-        '/api/v1/timelines/home',
-        query.isEmpty ? null : query,
-      ),
-    );
-
+    final json = await _getJson(await _buildUrl(path, query.isEmpty ? null : query));
     return json is List ? json : [];
   }
+
+  Future<List<dynamic>> getHomeTimeline({int? limit, String? maxId, String? sinceId}) =>
+      _fetchTimeline('/api/v1/timelines/home', limit: limit, maxId: maxId, sinceId: sinceId);
+
+  Future<List<dynamic>> getLocalTimeline({int? limit, String? maxId, String? sinceId}) =>
+      _fetchTimeline('/api/v1/timelines/public', limit: limit, maxId: maxId, sinceId: sinceId);
+
+  Future<List<dynamic>> getFederatedTimeline({int? limit, String? maxId, String? sinceId}) =>
+      _fetchTimeline('/api/v1/timelines/public', limit: limit, maxId: maxId, sinceId: sinceId);
+
+  Future<List<dynamic>> getUserTimeline(String accountId, {int? limit, String? maxId, String? sinceId}) =>
+      _fetchTimeline('/api/v1/accounts/$accountId/statuses', limit: limit, maxId: maxId, sinceId: sinceId);
+
+  Future<List<dynamic>> getHashtagTimeline(String hashtag, {int? limit, String? maxId, String? sinceId}) =>
+      _fetchTimeline('/api/v1/timelines/tag/$hashtag', limit: limit, maxId: maxId, sinceId: sinceId);
 
   // ===== Notifications =====
-  Future<List<dynamic>> getNotifications({
-    int? limit,
-    String? maxId,
-    String? sinceId,
-  }) async {
+  Future<List<dynamic>> _fetchNotifications({int? limit, String? maxId, String? sinceId}) async {
     final query = <String, String>{};
     if (limit != null) query['limit'] = '$limit';
     if (maxId != null) query['max_id'] = maxId;
     if (sinceId != null) query['since_id'] = sinceId;
 
-    final json = await _getJson(
-      await _buildUrl(
-        '/api/v1/notifications',
-        query.isEmpty ? null : query,
-      ),
-    );
-
+    final json = await _getJson(await _buildUrl('/api/v1/notifications', query.isEmpty ? null : query));
     return json is List ? json : [];
   }
 
+  Future<List<dynamic>> getNotifications({int? limit, String? maxId, String? sinceId}) =>
+      _fetchNotifications(limit: limit, maxId: maxId, sinceId: sinceId);
+
   // ===== SharedPreferences helpers =====
-  Future<String?> getPrefString(String key) async =>
-      (await SharedPreferences.getInstance()).getString(key);
-
-  Future<bool> setPrefString(String key, String value) async =>
-      (await SharedPreferences.getInstance()).setString(key, value);
-
-  Future<int?> getPrefInt(String key) async =>
-      (await SharedPreferences.getInstance()).getInt(key);
-
-  Future<bool> setPrefInt(String key, int value) async =>
-      (await SharedPreferences.getInstance()).setInt(key, value);
-
-  Future<bool> removeKey(String key) async =>
-      (await SharedPreferences.getInstance()).remove(key);
-
-  Future<bool> containsKey(String key) async =>
-      (await SharedPreferences.getInstance()).containsKey(key);
-
-  Future<bool> clear() async =>
-      (await SharedPreferences.getInstance()).clear();
+  Future<String?> getPrefString(String key) async => (await SharedPreferences.getInstance()).getString(key);
+  Future<bool> setPrefString(String key, String value) async => (await SharedPreferences.getInstance()).setString(key, value);
+  Future<int?> getPrefInt(String key) async => (await SharedPreferences.getInstance()).getInt(key);
+  Future<bool> setPrefInt(String key, int value) async => (await SharedPreferences.getInstance()).setInt(key, value);
+  Future<bool> removeKey(String key) async => (await SharedPreferences.getInstance()).remove(key);
+  Future<bool> containsKey(String key) async => (await SharedPreferences.getInstance()).containsKey(key);
+  Future<bool> clear() async => (await SharedPreferences.getInstance()).clear();
 }
