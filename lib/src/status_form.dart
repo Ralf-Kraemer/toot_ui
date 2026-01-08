@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../helper.dart';
+import 'package:image_picker/image_picker.dart';
 
 class StatusForm extends StatefulWidget {
   /// Optional: if replying to a status
@@ -16,7 +17,11 @@ class _StatusFormState extends State<StatusForm> {
   final _statusController = TextEditingController();
   final _spoilerController = TextEditingController();
   bool _sensitive = false;
+  bool _private = false;
   bool _isPosting = false;
+
+  ImagePicker _picker = ImagePicker();
+  List<XFile> _selectedMedia = [];
 
   @override
   void dispose() {
@@ -25,16 +30,35 @@ class _StatusFormState extends State<StatusForm> {
     super.dispose();
   }
 
+  Future<void> _pickMedia() async {
+    if (_selectedMedia.isNotEmpty) {
+        setState(() {
+          _selectedMedia = [];
+        });
+    } else {
+        _selectedMedia = await _picker.pickMultipleMedia();
+        setState(() { });
+    }
+  }
+
   Future<void> _submitStatus() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isPosting = true);
+    List<int> mediaIds = [];
+    try {
+      mediaIds = await Helper.get().uploadMediaFiles(_selectedMedia);
+    } catch (e) {
+
+    }
 
     try {
       final result = await Helper.get().postStatus(
         _statusController.text.trim(),
         inReplyToId: widget.inReplyToId,
         sensitive: _sensitive,
+        private: _private,
+        mediaIDs: mediaIds,
         spoilerText: _spoilerController.text.trim().isEmpty
             ? null
             : _spoilerController.text.trim(),
@@ -84,16 +108,17 @@ class _StatusFormState extends State<StatusForm> {
                 ),
               TextFormField(
                 controller: _statusController,
-                maxLines: null,
+                maxLines: 9,
                 decoration: const InputDecoration(
                   labelText: 'What’s happening?',
                   border: OutlineInputBorder(),
                 ),
                 validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Status cannot be empty' : null,
+                    v == null || v.trim().isEmpty || v.trim().length > 500 ? 'Must be 1-500 characters' : null,
               ),
-              const SizedBox(height: 8),
-              TextFormField(
+              
+              const SizedBox(height: 4),
+              TextField(
                 controller: _spoilerController,
                 decoration: const InputDecoration(
                   labelText: 'Content warning (optional)',
@@ -102,25 +127,55 @@ class _StatusFormState extends State<StatusForm> {
               ),
               Row(
                 children: [
-                  Checkbox(
-                    value: _sensitive,
-                    onChanged: (v) {
-                      if (v != null) setState(() => _sensitive = v);
-                    },
+                  Column(
+                    children: [
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _sensitive,
+                              onChanged: (v) {
+                                if (v != null) setState(() => _sensitive = v);
+                              },
+                            ),
+                            const Text('Sensitive / NSFW'),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _private,
+                              onChanged: (v) {
+                                if (v != null) setState(() => _private = v);
+                              },
+                            ),
+                            const Text('Private'),
+                          ],
+                        )
+                    ]
                   ),
-                  const Text('Mark as sensitive'),
-                  const Spacer(),
-                  ElevatedButton(
-                    onPressed: _isPosting ? null : _submitStatus,
-                    child: _isPosting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(widget.inReplyToId != null ? 'Reply' : 'Post'),
-                  ),
-                ],
+                  Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: _isPosting ? null : _pickMedia,
+                        child: Row(children: [
+                          _selectedMedia.isEmpty ? const Icon(Icons.image) : Icon(Icons.remove),
+                          const SizedBox(width: 4),
+                          _selectedMedia.isEmpty ? const Text('Attach Media') : const Text('Clear'),
+                        ],),
+                      ),
+                      ElevatedButton(
+                        onPressed: _isPosting ? null : _submitStatus,
+                        child: _isPosting
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(widget.inReplyToId != null ? 'Reply' : 'Post'),
+                      ),
+                    ]
+                  )
+                ]
               ),
             ],
           ),

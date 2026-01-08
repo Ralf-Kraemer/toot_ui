@@ -25,6 +25,7 @@ dependencies:
   activitypub:
     git:
       url: https://github.com/Ralf-Kraemer/fedodo_ActivityPub.git
+  image_picker: ^1.2.1
 dev_dependencies:
   build_runner: ^2.1.8
   json_serializable: ^6.1.5
