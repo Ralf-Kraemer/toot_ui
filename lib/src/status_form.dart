@@ -1,14 +1,29 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../helper.dart';
 
+/// Flexible StatusForm: inline or overlay with cancel button
 class StatusForm extends StatefulWidget {
   /// Optional: if replying to a status
   final String? inReplyToId;
 
-  const StatusForm({super.key, this.inReplyToId});
+  /// Called when status successfully posts
+  final VoidCallback? onPost;
+
+  /// Optional cancel callback (if overlay mode)
+  final VoidCallback? onCancel;
+
+  /// Whether to render as overlay with dark background + cancel
+  final bool overlayMode;
+
+  const StatusForm({
+    super.key,
+    this.inReplyToId,
+    this.onPost,
+    this.onCancel,
+    this.overlayMode = false,
+  });
 
   @override
   State<StatusForm> createState() => _StatusFormState();
@@ -48,7 +63,7 @@ class _StatusFormState extends State<StatusForm> {
     List<int> mediaIds = [];
     try {
       mediaIds = await Helper.get().uploadMediaFiles(_selectedMedia);
-    } catch (e) {}
+    } catch (_) {}
 
     try {
       final result = await Helper.get().postStatus(
@@ -62,17 +77,15 @@ class _StatusFormState extends State<StatusForm> {
             : _spoilerController.text.trim(),
       );
 
-      if (mounted) {
+      if (mounted && result != null) {
+        _statusController.clear();
+        _spoilerController.clear();
+        setState(() => _sensitive = false);
+
+        if (widget.onPost != null) widget.onPost!();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Status posted successfully!')),
         );
-
-        if (result != null) {
-          _statusController.clear();
-          _spoilerController.clear();
-        }
-
-        setState(() => _sensitive = false);
       }
     } catch (e) {
       if (mounted) {
@@ -85,8 +98,7 @@ class _StatusFormState extends State<StatusForm> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFormContent() {
     return Card(
       margin: const EdgeInsets.all(12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -99,7 +111,6 @@ class _StatusFormState extends State<StatusForm> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Reply notice
               if (widget.inReplyToId != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -107,12 +118,13 @@ class _StatusFormState extends State<StatusForm> {
                     'Replying to status ${widget.inReplyToId}',
                     style: TextStyle(
                       fontStyle: FontStyle.italic,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.6),
                     ),
                   ),
                 ),
-
-              // Status input
               TextFormField(
                 controller: _statusController,
                 maxLines: 6,
@@ -125,10 +137,7 @@ class _StatusFormState extends State<StatusForm> {
                         ? 'Must be 1-500 characters'
                         : null,
               ),
-
               const SizedBox(height: 10),
-
-              // Spoiler input
               TextField(
                 controller: _spoilerController,
                 decoration: const InputDecoration(
@@ -136,44 +145,20 @@ class _StatusFormState extends State<StatusForm> {
                   border: OutlineInputBorder(),
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Sensitive / Private
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [/*
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Checkbox(
-                        value: _sensitive,
-                        onChanged: (v) {
-                          if (v != null) setState(() => _sensitive = v);
-                        },
-                      ),
-                      const Text('Sensitive / NSFW'),
-                    ],
-                  ),*/
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Checkbox(
-                        value: _private,
-                        onChanged: (v) {
-                          if (v != null) setState(() => _private = v);
-                        },
-                      ),
-                      const Text('Private'),
-                    ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                    value: _private,
+                    onChanged: (v) {
+                      if (v != null) setState(() => _private = v);
+                    },
                   ),
+                  const Text('Private'),
                 ],
               ),
-
               const SizedBox(height: 12),
-
-              // Media preview
               if (_selectedMedia.isNotEmpty)
                 SizedBox(
                   height: 90,
@@ -181,23 +166,18 @@ class _StatusFormState extends State<StatusForm> {
                     scrollDirection: Axis.horizontal,
                     itemCount: _selectedMedia.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, index) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(_selectedMedia[index].path),
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.cover,
-                        ),
-                      );
-                    },
+                    itemBuilder: (_, index) => ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(_selectedMedia[index].path),
+                        width: 90,
+                        height: 90,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                 ),
-
               const SizedBox(height: 12),
-
-              // Buttons
               Row(
                 children: [
                   Expanded(
@@ -233,6 +213,37 @@ class _StatusFormState extends State<StatusForm> {
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.overlayMode) {
+      return _buildFormContent();
+    }
+
+    return Stack(
+      fit: StackFit.loose,
+      alignment: Alignment.center,
+      children: [
+        Container(color: Colors.black54, width: double.infinity, height: double.infinity),
+        SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildFormContent(),
+              const SizedBox(height: 16),
+              IconButton(
+                icon: const Icon(Icons.cancel),
+                iconSize: 64,
+                color: Colors.white,
+                onPressed: widget.onCancel,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

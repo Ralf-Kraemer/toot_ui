@@ -83,7 +83,7 @@ class Helper {
   Future<dynamic> _getJson(Uri url) => _requestJson('GET', url);
   Future<dynamic> _deleteJson(Uri url) => _requestJson('DELETE', url);
 
-  // ===== Media upload (with MIME fix) =====
+  // ===== Media upload =====
   Future<List<int>> uploadMediaFiles(List<XFile> files) async {
     if (files.isEmpty) return [];
 
@@ -105,9 +105,7 @@ class Helper {
         throw Exception('File does not exist: ${file.path}');
       }
 
-      // Detect MIME type from extension
-      final ext = file.path.split('.').last.toLowerCase();
-      final mimeType = _detectMimeType(ext);
+      final mimeType = _detectMimeType(file.path.split('.').last.toLowerCase());
 
       final request = http.MultipartRequest('POST', uri)
         ..headers['Authorization'] = 'Bearer $token'
@@ -167,7 +165,13 @@ class Helper {
     bool? private,
     String? spoilerText,
     List<int>? mediaIDs,
+    List<XFile>? mediaFiles, // new optional parameter
   }) async {
+    // If media files are provided, upload them first
+    if (mediaFiles != null && mediaFiles.isNotEmpty) {
+      mediaIDs = await uploadMediaFiles(mediaFiles);
+    }
+
     final url = await _buildUrl('/api/v1/statuses');
     final body = <String, dynamic>{'status': status};
 
@@ -179,6 +183,7 @@ class Helper {
 
     return _postJson(url, body);
   }
+
 
   Future<dynamic> boostStatus(String statusId) async =>
       _postJson(await _buildUrl('/api/v1/statuses/$statusId/reblog'));
@@ -230,6 +235,63 @@ class Helper {
 
   Future<List<dynamic>> getNotifications({int? limit, String? maxId, String? sinceId}) =>
       _fetchNotifications(limit: limit, maxId: maxId, sinceId: sinceId);
+
+  // ===== Profile reading/writing =====
+
+  /// Get any user's profile by ID
+  Future<Map<String, dynamic>> getProfile(String userId) async {
+    final json = await _getJson(await _buildUrl('/api/v1/accounts/$userId'));
+    if (json is Map<String, dynamic>) {
+      return {
+        'id': json['id'],
+        'username': json['username'],
+        'acct': json['acct'],
+        'display_name': json['display_name'],
+        'note': json['note'],
+        'avatar': json['avatar'],
+        'header': json['header'],
+        'custom_fields': json['fields'] ?? [],
+      };
+    }
+    throw FormatException('Invalid profile response for user $userId');
+  }
+
+  /// Update logged-in user's profile (supports display_name, note, avatar, header, fields)
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> fields) async {
+    final url = await _buildUrl('/api/v1/accounts/update_credentials');
+
+    final allowedKeys = ['display_name', 'note', 'avatar', 'header', 'fields'];
+    final body = <String, dynamic>{};
+    for (final key in allowedKeys) {
+      if (fields.containsKey(key)) body[key] = fields[key];
+    }
+
+    final json = await _postJson(url, body);
+    if (json is Map<String, dynamic>) return json;
+    throw FormatException('Invalid response from profile update');
+  }
+
+  /// Update only custom fields safely
+  Future<Map<String, dynamic>> updateCustomFields(List<Map<String, String>> fields) async {
+    // Each field should be {'name': 'label', 'value': 'text/value'}
+    return updateProfile({'fields': fields});
+  }
+
+  /// Get current user's custom fields
+  Future<List<Map<String, String>>> getOwnCustomFields() async {
+    final me = await _getJson(await _buildUrl('/api/v1/accounts/verify_credentials'));
+    if (me is Map<String, dynamic>) {
+      final fields = me['fields'] as List<dynamic>? ?? [];
+      return fields
+          .whereType<Map<String, dynamic>>()
+          .map((f) => {
+                'name': f['name']?.toString() ?? '',
+                'value': f['value']?.toString() ?? '',
+              })
+          .toList();
+    }
+    return [];
+  }
 
   // ===== SharedPreferences helpers =====
   Future<String?> getPrefString(String key) async => (await SharedPreferences.getInstance()).getString(key);
