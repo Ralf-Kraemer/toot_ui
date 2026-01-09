@@ -234,6 +234,6 @@ class TootToTootVMConverter {
   }
 
   static bool _favourited(MastodonStatus toot) {
-    return toot.favourited != null ? toot.favourited! : false;
+    return toot.favourited!;
   }
 }

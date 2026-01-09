@@ -144,18 +144,17 @@ class _EmbeddedTootViewState extends State<EmbeddedTootView> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (t.createdAt != null)
-                    Container(
-                      margin: const EdgeInsets.only(left: 16),
-                      child: Text(
-                        t.createdAt!,
-                        style: TextStyle(
-                          color: (widget.darkMode)
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
-                        ),
+                  Container(
+                    margin: const EdgeInsets.only(left: 16),
+                    child: Text(
+                      t.createdAt!,
+                      style: TextStyle(
+                        color: (widget.darkMode)
+                            ? Colors.grey[400]
+                            : Colors.grey[600],
                       ),
                     ),
+                  ),
                 ],
               ),
             ),

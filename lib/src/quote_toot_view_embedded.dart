@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:toot_ui/src/byline.dart';
-import 'package:toot_ui/src/media_container.dart';
 import 'package:toot_ui/src/url_launcher.dart';
 import 'package:toot_ui/src/view_mode.dart';
 import 'package:toot_ui/toot_ui.dart';

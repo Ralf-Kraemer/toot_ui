@@ -3,26 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../helper.dart';
 
-/// Flexible StatusForm: inline or overlay with cancel button
+/// A flexible StatusForm that can be used inline or as an overlay.
+/// - `showCancel` toggles the background + cancel button overlay.
+/// - `onPost` is called after successful post.
+/// - `onCancel` is called when user taps cancel (overlay only).
 class StatusForm extends StatefulWidget {
-  /// Optional: if replying to a status
   final String? inReplyToId;
-
-  /// Called when status successfully posts
+  final bool showCancel;
   final VoidCallback? onPost;
-
-  /// Optional cancel callback (if overlay mode)
   final VoidCallback? onCancel;
-
-  /// Whether to render as overlay with dark background + cancel
-  final bool overlayMode;
 
   const StatusForm({
     super.key,
     this.inReplyToId,
+    this.showCancel = false,
     this.onPost,
     this.onCancel,
-    this.overlayMode = false,
   });
 
   @override
@@ -77,15 +73,21 @@ class _StatusFormState extends State<StatusForm> {
             : _spoilerController.text.trim(),
       );
 
-      if (mounted && result != null) {
-        _statusController.clear();
-        _spoilerController.clear();
-        setState(() => _sensitive = false);
-
-        if (widget.onPost != null) widget.onPost!();
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Status posted successfully!')),
         );
+
+        if (result != null) {
+          _statusController.clear();
+          _spoilerController.clear();
+          _selectedMedia = [];
+        }
+
+        setState(() => _sensitive = false);
+
+        // Trigger parent callback if any
+        widget.onPost?.call();
       }
     } catch (e) {
       if (mounted) {
@@ -98,8 +100,9 @@ class _StatusFormState extends State<StatusForm> {
     }
   }
 
-  Widget _buildFormContent() {
-    return Card(
+  @override
+  Widget build(BuildContext context) {
+    final formContent = Card(
       margin: const EdgeInsets.all(12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 3,
@@ -118,10 +121,7 @@ class _StatusFormState extends State<StatusForm> {
                     'Replying to status ${widget.inReplyToId}',
                     style: TextStyle(
                       fontStyle: FontStyle.italic,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.6),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
                   ),
                 ),
@@ -166,15 +166,17 @@ class _StatusFormState extends State<StatusForm> {
                     scrollDirection: Axis.horizontal,
                     itemCount: _selectedMedia.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, index) => ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        File(_selectedMedia[index].path),
-                        width: 90,
-                        height: 90,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                    itemBuilder: (_, index) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(_selectedMedia[index].path),
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                        ),
+                      );
+                    },
                   ),
                 ),
               const SizedBox(height: 12),
@@ -214,34 +216,31 @@ class _StatusFormState extends State<StatusForm> {
         ),
       ),
     );
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.overlayMode) {
-      return _buildFormContent();
-    }
+    if (!widget.showCancel) return formContent;
 
     return Stack(
       fit: StackFit.loose,
       alignment: Alignment.center,
       children: [
-        Container(color: Colors.black54, width: double.infinity, height: double.infinity),
-        SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildFormContent(),
-              const SizedBox(height: 16),
-              IconButton(
-                icon: const Icon(Icons.cancel),
-                iconSize: 64,
-                color: Colors.white,
-                onPressed: widget.onCancel,
-              ),
-            ],
-          ),
+        Container(
+          color: Colors.black54,
+          width: double.infinity,
+          height: double.infinity,
+        ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            formContent,
+            IconButton(
+              icon: const Icon(Icons.cancel),
+              iconSize: 64,
+              onPressed: () {
+                widget.onCancel?.call();
+              },
+            ),
+          ],
         ),
       ],
     );

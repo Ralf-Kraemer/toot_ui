@@ -5,9 +5,7 @@ import 'package:toot_ui/models/api/v1/mastodonstatus.dart';
 import 'package:toot_ui/models/viewmodels/toot_vm.dart';
 import 'package:toot_ui/on_tap_image.dart';
 import 'package:toot_ui/src/byline.dart';
-import 'package:toot_ui/src/media_container.dart';
 import 'package:toot_ui/src/profile_image.dart';
-import 'package:toot_ui/src/toot_text.dart';
 import 'package:toot_ui/src/url_launcher.dart';
 import 'package:toot_ui/src/view_mode.dart';
 
