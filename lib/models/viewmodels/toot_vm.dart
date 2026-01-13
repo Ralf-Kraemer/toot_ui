@@ -1,5 +1,5 @@
 import 'package:intl/intl.dart';
-import 'package:toot_ui/models/api/v1/entieties/entity.dart';
+import 'package:toot_ui/models/api/v1/entities/entity.dart';
 import 'package:toot_ui/models/api/v1/mastodonstatus.dart';
 import 'package:toot_ui/models/viewmodels/converters/toot_to_toot_vm_converter.dart';
 

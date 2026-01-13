@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import 'package:toot_ui/models/api/v1/entieties/hashtag_entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/media_entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/mention_entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/symbol_entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/url_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/hashtag_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/media_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/mention_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/symbol_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/url_entity.dart';
 
 /// Provides metadata and additional contextual information about content posted in a toot.
 class TweetEntities {

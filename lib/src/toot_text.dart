@@ -3,10 +3,10 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:html_unescape/html_unescape_small.dart';
-import 'package:toot_ui/models/api/v1/entieties/hashtag_entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/mention_entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/symbol_entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/url_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/hashtag_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/mention_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/symbol_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/url_entity.dart';
 import 'package:toot_ui/models/viewmodels/toot_vm.dart';
 import 'package:toot_ui/src/url_launcher.dart';
 

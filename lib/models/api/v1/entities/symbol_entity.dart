@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:toot_ui/models/api/v1/entieties/entity.dart';
+import 'package:toot_ui/models/api/v1/entities/entity.dart';
 
 /// Represents symbols which have been parsed out of the Tweet text.
 class SymbolEntity extends Entity {

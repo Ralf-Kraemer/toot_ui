@@ -1,7 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:toot_ui/models/api/v1/mastodonstatus.dart';
-import 'package:toot_ui/models/api/v1/entieties/entity.dart';
-import 'package:toot_ui/models/api/v1/entieties/media_entity.dart';
+import 'package:toot_ui/models/api/v1/entities/entity.dart';
+import 'package:toot_ui/models/api/v1/entities/media_entity.dart';
 import 'package:toot_ui/models/viewmodels/toot_vm.dart';
 
 class TootToTootVMConverter {
