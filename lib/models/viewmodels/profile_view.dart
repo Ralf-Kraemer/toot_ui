@@ -38,10 +38,10 @@ class _ProfileViewState extends State<ProfileView>
       var data;
 
       if (widget.username != null) {
-        
+        print('fetching id by username');
         final preload = await _helper.getUserByUsername(_url!, widget.username!);
         String _id = preload!.id;
-        data = await _helper.getProfile(_id, _url);
+        data = await _helper.getProfile(_url, _id);
 
       } else {
 
