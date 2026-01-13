@@ -16,6 +16,7 @@ dependencies:
   intl: ^0.20.0
   photo_view: ^0.14.0
   url_launcher: ^6.0.20
+  html: ^0.15.0
   html_unescape: ^2.0.0
   json_annotation: ^4.4.0
   carousel_slider: ^5.0.0

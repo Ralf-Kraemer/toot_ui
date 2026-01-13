@@ -1,8 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:toot_ui/default_text_styles.dart';
 import 'package:toot_ui/models/api/v1/mastodonstatus.dart';
+import 'package:toot_ui/models/viewmodels/tag_view.dart';
+import 'package:toot_ui/models/viewmodels/profile_view.dart';
 import 'package:toot_ui/on_tap_image.dart';
 import 'package:toot_ui/src/byline.dart';
 import 'package:toot_ui/src/profile_image_embedded.dart';
@@ -11,7 +14,8 @@ import 'package:toot_ui/src/view_mode.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:toot_ui/helper.dart';
-
+import 'package:html/parser.dart' as html_parser;
+import 'package:html/dom.dart' as dom;
 
 class TootView extends StatefulWidget {
   final MastodonStatus toot;
@@ -46,17 +50,11 @@ class TootView extends StatefulWidget {
 class _TootViewState extends State<TootView> {
   final Helper helper = Helper.get();
 
-  Map<String, String> _authHeaders(String token) => {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      };
-
   @override
   Widget build(BuildContext context) {
     final t = widget.toot;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    print(t.content);
 
     return Container(
       decoration: BoxDecoration(
@@ -109,15 +107,16 @@ class _TootViewState extends State<TootView> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    t.content,
-                    style: theme.textTheme.bodyMedium,
+                  RichText(
+                    text: TextSpan(
+                      style: theme.textTheme.bodyMedium,
+                      children: parseMastodonHtml(t.content, context),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-
           if (t.mediaUrls.isNotEmpty)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -130,17 +129,13 @@ class _TootViewState extends State<TootView> {
                 options: CarouselOptions(height: 400),
               ),
             ),
-
           Divider(color: theme.dividerColor),
-
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
             child: Row(
               children: <Widget>[
-                // Boost
                 GestureDetector(
                   onTap: () async {
-
                     if (t.reblogged) {
                       final r = await helper.unboostStatus(t.id);
                       if (r.statusCode == 200) {
@@ -172,10 +167,7 @@ class _TootViewState extends State<TootView> {
                   t.reblogsCount.toString(),
                   style: theme.textTheme.bodySmall,
                 ),
-
                 const SizedBox(width: 24),
-
-                // Replies
                 Icon(
                   Icons.mode_comment_outlined,
                   color: theme.iconTheme.color,
@@ -185,23 +177,20 @@ class _TootViewState extends State<TootView> {
                   t.repliesCount.toString(),
                   style: theme.textTheme.bodySmall,
                 ),
-
                 const SizedBox(width: 24),
-
-                // Favourite
                 GestureDetector(
                   onTap: () async {
                     final token = await helper.getAccessToken();
                     if (token == null) return;
-
                     if (t.favourited) {
                       final r = await helper.unfavouriteStatus(t.id);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.favourited = false;
-                          t.favouritesCount = (t.favouritesCount > 0)
-                              ? t.favouritesCount - 1
-                              : 0;
+                          t.favouritesCount =
+                              (t.favouritesCount > 0)
+                                  ? t.favouritesCount - 1
+                                  : 0;
                         });
                       }
                     } else {
@@ -228,10 +217,7 @@ class _TootViewState extends State<TootView> {
                   t.favouritesCount.toString(),
                   style: theme.textTheme.bodySmall,
                 ),
-
                 const SizedBox(width: 24),
-
-                // Share
                 GestureDetector(
                   onTap: () =>
                       Share.share('Check out this post: ${t.url}'),
@@ -247,4 +233,89 @@ class _TootViewState extends State<TootView> {
       ),
     );
   }
+
+  List<TextSpan> parseMastodonHtml(String html, BuildContext context) {
+    final fragment = html_parser.parseFragment(html);
+    final spans = <TextSpan>[];
+
+    void walk(dom.Node node) {
+      if (node is dom.Text) {
+        spans.add(TextSpan(text: node.text));
+        return;
+      }
+      if (node is dom.Element) {
+        if (node.localName == 'br') {
+          spans.add(const TextSpan(text: '\n'));
+        } else if (node.localName == 'p') {
+          node.nodes.forEach(walk);
+          spans.add(const TextSpan(text: '\n\n'));
+        } else if (node.localName == 'a') {
+          final href = node.attributes['href'] ?? '';
+          final classes = node.classes;
+          if (classes.contains('hashtag')) {
+            spans.add(HashtagSpan(tag: node.text, context: context));
+          } else if (classes.contains('mention')) {
+            spans.add(UserSpan(userId: node.text, context: context));
+          } else if (href.isNotEmpty) {
+            spans.add(HyperlinkSpan(text: node.text, url: href));
+          } else {
+            node.nodes.forEach(walk);
+          }
+        } else {
+          node.nodes.forEach(walk);
+        }
+      }
+    }
+
+    fragment.nodes.forEach(walk);
+    return spans;
+  }
+}
+
+class HashtagSpan extends TextSpan {
+  HashtagSpan({
+    required String tag,
+    required BuildContext context,
+  }) : super(
+          text: tag,
+          style: const TextStyle(color: Colors.blue),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => TagView(tag: tag,),
+                ),
+              );
+            },
+        );
+}
+
+class UserSpan extends TextSpan {
+  UserSpan({
+    required String userId,
+    required BuildContext context,
+  }) : super(
+          text: userId,
+          style: const TextStyle(color: Colors.blue),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ProfileView(userId: userId,),
+                ),
+              );
+            },
+        );
+}
+
+class HyperlinkSpan extends TextSpan {
+  HyperlinkSpan({
+    required String text,
+    required String url,
+  }) : super(
+          text: text,
+          style: const TextStyle(color: Colors.blue),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () => openUrl(url),
+        );
 }
