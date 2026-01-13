@@ -283,7 +283,7 @@ class HashtagSpan extends TextSpan {
             ..onTap = () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => TagView(tag: tag,),
+                  builder: (_) => TagView(tag: tag.substring(1),),
                 ),
               );
             },
