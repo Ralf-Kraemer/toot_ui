@@ -46,8 +46,8 @@ class _ProfileViewState extends State<ProfileView>
       } else {
 
         data = widget.userId != null
-            ? await _helper.getProfile(widget.userId!, _url!)
-            : await _helper.getProfile('verify_credentials', _url!);
+            ? await _helper.getProfile(_url!, widget.userId!)
+            : await _helper.getProfile(_url!, 'verify_credentials');
 
       }
 
