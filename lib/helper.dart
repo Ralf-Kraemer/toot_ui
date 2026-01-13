@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:toot_ui/models/api/v1/mastodonuser.dart';
 
 class Helper {
   static final Helper _instance = Helper._internal();
@@ -17,18 +18,15 @@ class Helper {
       setPrefString('accessToken', value);
 
   // ===== Instance =====
-  Future<String?> getHomeInstanceName() => getPrefString('homeInstanceName');
   Future<bool> setHomeInstanceName(String value) =>
       setPrefString('homeInstanceName', value);
 
-  // ===== Internal URL builder =====
-  Future<Uri> _buildUrl(String path, [Map<String, String>? query]) async {
-    final instance = await getHomeInstanceName();
-    if (instance == null || instance.isEmpty) {
-      throw StateError('Home instance name is not set');
-    }
+  Future<String?> getHomeInstanceName() => getPrefString('homeInstanceName');
 
-    final host = instance.replaceAll(RegExp(r'^https?://'), '');
+  // ===== Internal URL builder =====
+  Future<Uri> _buildUrl(String instance, String path, [Map<String, String>? query]) async {
+    Uri _preUrl = Uri.parse(instance);
+    final host = '${_preUrl.scheme}://${_preUrl.host}'.replaceAll(RegExp(r'^https?://'), '');
     final cleanPath = path.startsWith('/') ? path.substring(1) : path;
     return Uri.https(host, cleanPath, query);
   }
@@ -172,7 +170,8 @@ class Helper {
       mediaIDs = await uploadMediaFiles(mediaFiles);
     }
 
-    final url = await _buildUrl('/api/v1/statuses');
+    final _i = await getHomeInstanceName();
+    final url = await _buildUrl(_i!, '/api/v1/statuses');
     final body = <String, dynamic>{'status': status};
 
     if (inReplyToId != null) body['in_reply_to_id'] = inReplyToId;
@@ -185,25 +184,30 @@ class Helper {
   }
 
 
-  Future<dynamic> boostStatus(String statusId) async =>
-      _postJson(await _buildUrl('/api/v1/statuses/$statusId/reblog'));
-  Future<dynamic> unboostStatus(String statusId) async =>
-      _postJson(await _buildUrl('/api/v1/statuses/$statusId/unreblog'));
-  Future<dynamic> favouriteStatus(String statusId) async =>
-      _postJson(await _buildUrl('/api/v1/statuses/$statusId/favourite'));
-  Future<dynamic> unfavouriteStatus(String statusId) async =>
-      _postJson(await _buildUrl('/api/v1/statuses/$statusId/unfavourite'));
-  Future<dynamic> deleteStatus(String statusId) async =>
-      _deleteJson(await _buildUrl('/api/v1/statuses/$statusId'));
+  Future<dynamic> boostStatus(String statusId, String? url) async =>
+      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/reblog'));
+  Future<dynamic> unboostStatus(String statusId, String? url) async =>
+      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/unreblog'));
+  Future<dynamic> favouriteStatus(String statusId, String? url) async =>
+      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/favourite'));
+  Future<dynamic> unfavouriteStatus(String statusId, String? url) async =>
+      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/unfavourite'));
+  Future<dynamic> deleteStatus(String statusId, String? url) async =>
+      _deleteJson(await _buildUrl(url!, '/api/v1/statuses/$statusId'));
 
   // ===== Timeline helpers =====
-  Future<List<dynamic>> _fetchTimeline(String path, {int? limit, String? maxId, String? sinceId}) async {
+  Future<List<dynamic>> _fetchTimeline(String path, {int? limit, String? url, String? maxId, String? sinceId}) async {
     final query = <String, String>{};
+    String? _i;
     if (limit != null) query['limit'] = '$limit';
     if (maxId != null) query['max_id'] = maxId;
     if (sinceId != null) query['since_id'] = sinceId;
-
-    final json = await _getJson(await _buildUrl(path, query.isEmpty ? null : query));
+    if (url == null) {
+      _i = await getHomeInstanceName();
+    } else {
+      _i = url;
+    }
+    final json = await _getJson(await _buildUrl(_i!, path, query.isEmpty ? null : query));
     return json is List ? json : [];
   }
 
@@ -216,8 +220,8 @@ class Helper {
   Future<List<dynamic>> getFederatedTimeline({int? limit, String? maxId, String? sinceId}) =>
       _fetchTimeline('/api/v1/timelines/public', limit: limit, maxId: maxId, sinceId: sinceId);
 
-  Future<List<dynamic>> getUserTimeline(String accountId, {int? limit, String? maxId, String? sinceId}) =>
-      _fetchTimeline('/api/v1/accounts/$accountId/statuses', limit: limit, maxId: maxId, sinceId: sinceId);
+  Future<List<dynamic>> getUserTimeline(String accountId, String url, {int? limit, String? maxId, String? sinceId}) =>
+      _fetchTimeline('/api/v1/accounts/$accountId/statuses', limit: limit, url: url, maxId: maxId, sinceId: sinceId);
 
   Future<List<dynamic>> getHashtagTimeline(String hashtag, {int? limit, String? maxId, String? sinceId}) =>
       _fetchTimeline('/api/v1/timelines/tag/$hashtag', limit: limit, maxId: maxId, sinceId: sinceId);
@@ -228,8 +232,8 @@ class Helper {
     if (limit != null) query['limit'] = '$limit';
     if (maxId != null) query['max_id'] = maxId;
     if (sinceId != null) query['since_id'] = sinceId;
-
-    final json = await _getJson(await _buildUrl('/api/v1/notifications', query.isEmpty ? null : query));
+    final _i = await getHomeInstanceName();
+    final json = await _getJson(await _buildUrl(_i!, '/api/v1/notifications', query.isEmpty ? null : query));
     return json is List ? json : [];
   }
 
@@ -239,8 +243,8 @@ class Helper {
   // ===== Profile reading/writing =====
 
   /// Get any user's profile by ID
-  Future<Map<String, dynamic>> getProfile(String userId) async {
-    final json = await _getJson(await _buildUrl('/api/v1/accounts/$userId'));
+  Future<Map<String, dynamic>> getProfile(String url, String userId) async {
+    final json = await _getJson(await _buildUrl(url, '/api/v1/accounts/$userId'));
     if (json is Map<String, dynamic>) {
       return {
         'id': json['id'],
@@ -258,7 +262,8 @@ class Helper {
 
   /// Update logged-in user's profile (supports display_name, note, avatar, header, fields)
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> fields) async {
-    final url = await _buildUrl('/api/v1/accounts/update_credentials');
+    final _instance = await getHomeInstanceName();
+    final url = await _buildUrl(_instance!, '/api/v1/accounts/update_credentials');
 
     final allowedKeys = ['display_name', 'note', 'avatar', 'header', 'fields'];
     final body = <String, dynamic>{};
@@ -279,7 +284,8 @@ class Helper {
 
   /// Get current user's custom fields
   Future<List<Map<String, String>>> getOwnCustomFields() async {
-    final me = await _getJson(await _buildUrl('/api/v1/accounts/verify_credentials'));
+    final _i = await getHomeInstanceName();
+    final me = await _getJson(await _buildUrl(_i!, '/api/v1/accounts/verify_credentials'));
     if (me is Map<String, dynamic>) {
       final fields = me['fields'] as List<dynamic>? ?? [];
       return fields
@@ -292,6 +298,35 @@ class Helper {
     }
     return [];
   }
+
+  /// Look up a user by username on a known instance
+  /// `username` may be "user" or "user@instance"
+  Future<MastodonUser?> getUserByUsername(
+    String instance,
+    String username,
+  ) async {
+    // Strip leading @ if present
+    var query = username.startsWith('@') ? username.substring(1) : username;
+
+    final url = await _buildUrl(
+      instance,
+      '/api/v1/accounts/search',
+      {
+        'q': query,
+        'limit': '1',
+        'resolve': 'true',
+      },
+    );
+
+    final json = await _getJson(url);
+
+    if (json is List && json.isNotEmpty && json.first is Map<String, dynamic>) {
+      return MastodonUser.fromJson(json.first as Map<String, dynamic>);
+    }
+
+    return null;
+  }
+
 
   // ===== SharedPreferences helpers =====
   Future<String?> getPrefString(String key) async => (await SharedPreferences.getInstance()).getString(key);

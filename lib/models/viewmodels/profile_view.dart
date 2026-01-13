@@ -3,9 +3,11 @@ import 'package:toot_ui/toot_ui.dart';
 import 'profile_custom.dart';
 
 class ProfileView extends StatefulWidget {
-  final String? userId; // if null, show logged-in user's profile
+  final String? url; // if null, show logged-in user's profile
+  final String? username;
+  final String? userId;
 
-  const ProfileView({super.key, this.userId});
+  const ProfileView({super.key, this.url, this.username, this.userId});
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
@@ -28,10 +30,26 @@ class _ProfileViewState extends State<ProfileView>
   }
 
   Future<void> _loadProfile() async {
+
+    String? _url = widget.url ?? await _helper.getHomeInstanceName();
+
     try {
-      final data = widget.userId != null
-          ? await _helper.getProfile(widget.userId!)
-          : await _helper.getProfile('verify_credentials');
+
+      var data;
+
+      if (widget.username != null) {
+        
+        final preload = await _helper.getUserByUsername(_url!, widget.username!);
+        String _id = preload!.id;
+        data = await _helper.getProfile(_id, _url);
+
+      } else {
+
+        data = widget.userId != null
+            ? await _helper.getProfile(widget.userId!, _url!)
+            : await _helper.getProfile('verify_credentials', _url!);
+
+      }
 
       // Convert Mastodon / ActivityPub custom fields to ProfileCustomNode
       final rawFields = List<Map<String, dynamic>>.from(data['custom_fields'] ?? []);

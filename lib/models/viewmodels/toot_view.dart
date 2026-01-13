@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:toot_ui/default_text_styles.dart';
 import 'package:toot_ui/models/api/v1/mastodonstatus.dart';
+import 'package:toot_ui/models/api/v1/mastodonuser.dart';
 import 'package:toot_ui/models/viewmodels/tag_view.dart';
 import 'package:toot_ui/models/viewmodels/profile_view.dart';
 import 'package:toot_ui/on_tap_image.dart';
@@ -77,7 +78,13 @@ class _TootViewState extends State<TootView> {
                     padding: const EdgeInsets.symmetric(horizontal: 8.0),
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
-                      onTap: () => openUrl(t.account.url ?? ""),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ProfileView(userId: t.account.id,),
+                          ),
+                        );
+                      },
                       child: Stack(
                         children: <Widget>[
                           Row(
@@ -136,8 +143,10 @@ class _TootViewState extends State<TootView> {
               children: <Widget>[
                 GestureDetector(
                   onTap: () async {
+                    final token = await helper.getAccessToken();
+                    if (token == null) return;
                     if (t.reblogged) {
-                      final r = await helper.unboostStatus(t.id);
+                      final r = await helper.unboostStatus(t.id, t.uri!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.reblogged = false;
@@ -146,7 +155,7 @@ class _TootViewState extends State<TootView> {
                         });
                       }
                     } else {
-                      final r = await helper.unboostStatus(t.id);
+                      final r = await helper.unboostStatus(t.id, t.uri!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.reblogged = true;
@@ -158,7 +167,7 @@ class _TootViewState extends State<TootView> {
                   child: Icon(
                     Icons.local_fire_department,
                     color: t.reblogged
-                        ? Colors.orange[700]
+                        ? Colors.orangeAccent[400]
                         : theme.iconTheme.color,
                   ),
                 ),
@@ -180,10 +189,8 @@ class _TootViewState extends State<TootView> {
                 const SizedBox(width: 24),
                 GestureDetector(
                   onTap: () async {
-                    final token = await helper.getAccessToken();
-                    if (token == null) return;
                     if (t.favourited) {
-                      final r = await helper.unfavouriteStatus(t.id);
+                      final r = await helper.unfavouriteStatus(t.id, t.uri!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.favourited = false;
@@ -194,7 +201,7 @@ class _TootViewState extends State<TootView> {
                         });
                       }
                     } else {
-                      final r = await helper.favouriteStatus(t.id);
+                      final r = await helper.favouriteStatus(t.id, t.uri!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.favourited = true;
@@ -205,10 +212,10 @@ class _TootViewState extends State<TootView> {
                   },
                   child: Icon(
                     t.favourited
-                        ? Icons.bookmark_added
-                        : Icons.bookmark,
+                        ? Icons.favorite
+                        : Icons.favorite_outline,
                     color: t.favourited
-                        ? Colors.green[600]
+                        ? Colors.blueAccent[200]
                         : theme.iconTheme.color,
                   ),
                 ),
@@ -255,7 +262,7 @@ class _TootViewState extends State<TootView> {
           if (classes.contains('hashtag')) {
             spans.add(HashtagSpan(tag: node.text, context: context));
           } else if (classes.contains('mention')) {
-            spans.add(UserSpan(userId: node.text, context: context));
+            spans.add(UserSpan(username: node.text, context: context, url: node.attributes['href']));
           } else if (href.isNotEmpty) {
             spans.add(HyperlinkSpan(text: node.text, url: href));
           } else {
@@ -292,16 +299,18 @@ class HashtagSpan extends TextSpan {
 
 class UserSpan extends TextSpan {
   UserSpan({
-    required String userId,
+    String? url,
+    required String username,
+    String? userId,
     required BuildContext context,
   }) : super(
-          text: userId,
+          text: username,
           style: const TextStyle(color: Colors.blue),
           recognizer: TapGestureRecognizer()
             ..onTap = () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => ProfileView(userId: userId,),
+                  builder: (_) => ProfileView(userId: userId, username: username, url: url),
                 ),
               );
             },

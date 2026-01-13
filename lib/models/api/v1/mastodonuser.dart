@@ -37,4 +37,5 @@ class MastodonUser {
         verified: json["bot"] ?? false, // Mastodon doesn't have verified accounts like Twitter
         avatarUrl: json["avatar"],
       );
+
 }
