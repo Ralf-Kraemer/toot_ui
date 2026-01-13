@@ -81,7 +81,7 @@ class _TootViewState extends State<TootView> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => ProfileView(userId: t.account.id,),
+                            builder: (_) => ProfileView(userId: t.account.id, url: t.account.url,),
                           ),
                         );
                       },
@@ -146,7 +146,7 @@ class _TootViewState extends State<TootView> {
                     final token = await helper.getAccessToken();
                     if (token == null) return;
                     if (t.reblogged) {
-                      final r = await helper.unboostStatus(t.id, t.uri!);
+                      final r = await helper.unboostStatus(t.id, t.url!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.reblogged = false;
@@ -155,7 +155,7 @@ class _TootViewState extends State<TootView> {
                         });
                       }
                     } else {
-                      final r = await helper.unboostStatus(t.id, t.uri!);
+                      final r = await helper.unboostStatus(t.id, t.url!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.reblogged = true;
@@ -190,7 +190,7 @@ class _TootViewState extends State<TootView> {
                 GestureDetector(
                   onTap: () async {
                     if (t.favourited) {
-                      final r = await helper.unfavouriteStatus(t.id, t.uri!);
+                      final r = await helper.unfavouriteStatus(t.id, t.url!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.favourited = false;
@@ -201,7 +201,7 @@ class _TootViewState extends State<TootView> {
                         });
                       }
                     } else {
-                      final r = await helper.favouriteStatus(t.id, t.uri!);
+                      final r = await helper.favouriteStatus(t.id, t.url!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.favourited = true;
@@ -310,7 +310,7 @@ class UserSpan extends TextSpan {
             ..onTap = () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => ProfileView(userId: userId, username: username, url: url),
+                  builder: (_) => ProfileView(username: username, url: url),
                 ),
               );
             },
