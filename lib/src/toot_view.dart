@@ -56,6 +56,7 @@ class _TootViewState extends State<TootView> {
     final t = widget.toot;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    print(t.content);
 
     return Container(
       decoration: BoxDecoration(
@@ -103,13 +104,6 @@ class _TootViewState extends State<TootView> {
                               ),
                             ],
                           ),
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: Icon(
-                              Icons.alternate_email,
-                              color: theme.iconTheme.color,
-                            ),
-                          )
                         ],
                       ),
                     ),
