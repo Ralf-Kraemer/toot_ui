@@ -384,7 +384,17 @@ Future<void> clearOwnAccountInfo() async {
   await removeKey(_keyOwnHeader);
 }
 
+/// Log out the current user by clearing all local credentials
+Future<void> clearLocalInfo() async {
+  // Clear access token
+  await removeKey('accessToken');
 
+  // Clear home instance if desired (optional)
+  await removeKey('homeInstanceName');
+
+  // Clear own account info
+  await clearOwnAccountInfo();
+}
 
   // ===== SharedPreferences helpers =====
   Future<String?> getPrefString(String key) async => (await SharedPreferences.getInstance()).getString(key);
