@@ -155,7 +155,7 @@ class _TootViewState extends State<TootView> {
                         });
                       }
                     } else {
-                      final r = await helper.unboostStatus(t.id, t.url!);
+                      final r = await helper.boostStatus(t.id, t.url!);
                       if (r.statusCode == 200) {
                         setState(() {
                           t.reblogged = true;
