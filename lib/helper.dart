@@ -327,6 +327,64 @@ class Helper {
     return null;
   }
 
+  // ===== Own account storage =====
+
+/// Keys for SharedPreferences
+static const _keyOwnAccountId = 'ownAccountId';
+static const _keyOwnUsername = 'ownUsername';
+static const _keyOwnAcct = 'ownAcct';
+static const _keyOwnDisplayName = 'ownDisplayName';
+static const _keyOwnAvatar = 'ownAvatar';
+static const _keyOwnHeader = 'ownHeader';
+
+/// Store user info fetched by ApiOAuth
+Future<void> storeOwnAccountInfo({
+  required String id,
+  required String username,
+  required String acct,
+  required String displayName,
+  String? avatar,
+  String? header,
+}) async {
+  await setPrefString(_keyOwnAccountId, id);
+  await setPrefString(_keyOwnUsername, username);
+  await setPrefString(_keyOwnAcct, acct);
+  await setPrefString(_keyOwnDisplayName, displayName);
+  if (avatar != null) await setPrefString(_keyOwnAvatar, avatar);
+  if (header != null) await setPrefString(_keyOwnHeader, header);
+}
+
+/// Fetch stored own account info
+Future<Map<String, String?>> getOwnAccountInfo() async {
+  return {
+    'id': await getPrefString(_keyOwnAccountId),
+    'username': await getPrefString(_keyOwnUsername),
+    'acct': await getPrefString(_keyOwnAcct),
+    'displayName': await getPrefString(_keyOwnDisplayName),
+    'avatar': await getPrefString(_keyOwnAvatar),
+    'header': await getPrefString(_keyOwnHeader),
+  };
+}
+
+/// Convenience getters
+Future<String?> getOwnAccountId() => getPrefString(_keyOwnAccountId);
+Future<String?> getOwnUsername() => getPrefString(_keyOwnUsername);
+Future<String?> getOwnAcct() => getPrefString(_keyOwnAcct);
+Future<String?> getOwnDisplayName() => getPrefString(_keyOwnDisplayName);
+Future<String?> getOwnAvatar() => getPrefString(_keyOwnAvatar);
+Future<String?> getOwnHeader() => getPrefString(_keyOwnHeader);
+
+/// Clear stored user info
+Future<void> clearOwnAccountInfo() async {
+  await removeKey(_keyOwnAccountId);
+  await removeKey(_keyOwnUsername);
+  await removeKey(_keyOwnAcct);
+  await removeKey(_keyOwnDisplayName);
+  await removeKey(_keyOwnAvatar);
+  await removeKey(_keyOwnHeader);
+}
+
+
 
   // ===== SharedPreferences helpers =====
   Future<String?> getPrefString(String key) async => (await SharedPreferences.getInstance()).getString(key);
