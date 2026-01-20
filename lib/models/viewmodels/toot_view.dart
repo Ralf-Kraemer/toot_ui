@@ -136,7 +136,7 @@ class _TootViewState extends State<TootView> {
                 options: CarouselOptions(height: 400),
               ),
             ),
-          Divider(color: theme.dividerColor),
+          Divider(color: theme.dividerColor, thickness: 0.4,),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
             child: Row(
