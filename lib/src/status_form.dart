@@ -144,7 +144,7 @@ class _StatusFormState extends State<StatusForm> {
                   TextField(
                     controller: _spoilerController,
                     decoration: const InputDecoration(
-                      labelText: 'Content warning (optional)',
+                      labelText: 'Warning (optional)',
                       border: OutlineInputBorder(),
                     ),
                   ),
