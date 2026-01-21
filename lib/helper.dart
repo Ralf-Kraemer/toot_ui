@@ -384,6 +384,19 @@ Future<void> clearOwnAccountInfo() async {
   await removeKey(_keyOwnHeader);
 }
 
+Future<void> setVideoCategoryInterests(List<String> interests){
+  return setPrefString('videoCategoryInterests', jsonEncode(interests));
+}
+
+Future<List<String>> getVideoCategoryInterests() async {
+  final jsonString = await getPrefString('videoCategoryInterests');
+  if (jsonString != null) {
+    final List<dynamic> decoded = jsonDecode(jsonString);
+    return decoded.whereType<String>().toList();
+  }
+  return [];
+}
+
 /// Log out the current user by clearing all local credentials
 Future<void> clearLocalInfo() async {
   // Clear access token
