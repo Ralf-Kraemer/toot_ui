@@ -127,7 +127,7 @@ class _StatusFormState extends State<StatusForm> {
                 ),
               TextFormField(
                 controller: _statusController,
-                maxLines: 6,
+                maxLines: 5,
                 decoration: const InputDecoration(
                   labelText: 'What’s happening?',
                   border: OutlineInputBorder(),
@@ -137,18 +137,17 @@ class _StatusFormState extends State<StatusForm> {
                         ? 'Must be 1-500 characters'
                         : null,
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _spoilerController,
-                decoration: const InputDecoration(
-                  labelText: 'Content warning (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 9),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  TextField(
+                    controller: _spoilerController,
+                    decoration: const InputDecoration(
+                      labelText: 'Content warning (optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   Checkbox(
                     value: _private,
                     onChanged: (v) {
@@ -186,7 +185,7 @@ class _StatusFormState extends State<StatusForm> {
                     child: ElevatedButton.icon(
                       onPressed: _isPosting ? null : _pickMedia,
                       icon: _selectedMedia.isEmpty
-                          ? const Icon(Icons.browse_gallery)
+                          ? const Icon(Icons.add_photo_alternate_rounded)
                           : const Icon(Icons.clear),
                       label: _selectedMedia.isEmpty
                           ? const Text('Attach')
