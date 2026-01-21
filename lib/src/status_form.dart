@@ -103,11 +103,11 @@ class _StatusFormState extends State<StatusForm> {
   @override
   Widget build(BuildContext context) {
     final formContent = Card(
-      margin: const EdgeInsets.all(12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.all(9),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
       elevation: 3,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(9),
         child: Form(
           key: _formKey,
           child: Column(
@@ -127,7 +127,9 @@ class _StatusFormState extends State<StatusForm> {
                 ),
               TextFormField(
                 controller: _statusController,
+                minLines: 2,
                 maxLines: 5,
+                expands: true,
                 decoration: const InputDecoration(
                   labelText: 'What’s happening?',
                   border: OutlineInputBorder(),
@@ -137,17 +139,18 @@ class _StatusFormState extends State<StatusForm> {
                         ? 'Must be 1-500 characters'
                         : null,
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 5),
+              TextField(
+                controller: _spoilerController,
+                decoration: const InputDecoration(
+                  labelText: 'Warning (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 5),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: _spoilerController,
-                    decoration: const InputDecoration(
-                      labelText: 'Warning (optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
                   Checkbox(
                     value: _private,
                     onChanged: (v) {
@@ -157,7 +160,7 @@ class _StatusFormState extends State<StatusForm> {
                   const Text('Private'),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 5),
               if (_selectedMedia.isNotEmpty)
                 SizedBox(
                   height: 90,
@@ -178,7 +181,7 @@ class _StatusFormState extends State<StatusForm> {
                     },
                   ),
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
