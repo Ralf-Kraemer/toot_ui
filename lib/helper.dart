@@ -56,10 +56,21 @@ class Helper {
         );
         break;
       case 'GET':
-        final headers = {
-          'Content-Type': 'application/json',
-        };
-        response = await http.get(url, headers: headers);
+        if (url != getHomeInstanceName()) {
+          final headers = {
+            'Content-Type': 'application/json',
+          };
+          response = await http.get(url, headers: headers);
+        } else {
+          final token = await getAccessToken();
+          if (token == null) throw StateError('Access token is not set');
+
+          final headers = {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          };
+          response = await http.get(url, headers: headers);
+        }
         break;
       case 'DELETE':
         final token = await getAccessToken();
