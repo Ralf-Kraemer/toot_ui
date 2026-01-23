@@ -37,6 +37,8 @@ class Helper {
     Uri url, [
     Map<String, dynamic>? body,
   ]) async {
+    
+    Uri _homeInstance = Uri.parse(await getHomeInstanceName() ?? '');
 
     late http.Response response;
 
@@ -44,7 +46,6 @@ class Helper {
       case 'POST':
         final token = await getAccessToken();
         if (token == null) throw StateError('Access token is not set');
-
         final headers = {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -56,7 +57,7 @@ class Helper {
         );
         break;
       case 'GET':
-        if (url != getHomeInstanceName()) {
+        if (url != _homeInstance) {
           final headers = {
             'Content-Type': 'application/json',
           };
