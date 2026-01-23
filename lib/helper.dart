@@ -37,18 +37,18 @@ class Helper {
     Uri url, [
     Map<String, dynamic>? body,
   ]) async {
-    final token = await getAccessToken();
-    if (token == null) throw StateError('Access token is not set');
-
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
 
     late http.Response response;
 
     switch (method) {
       case 'POST':
+        final token = await getAccessToken();
+        if (token == null) throw StateError('Access token is not set');
+
+        final headers = {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        };
         response = await http.post(
           url,
           headers: headers,
@@ -56,9 +56,19 @@ class Helper {
         );
         break;
       case 'GET':
+        final headers = {
+          'Content-Type': 'application/json',
+        };
         response = await http.get(url, headers: headers);
         break;
       case 'DELETE':
+        final token = await getAccessToken();
+        if (token == null) throw StateError('Access token is not set');
+
+        final headers = {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        };
         response = await http.delete(url, headers: headers);
         break;
       default:

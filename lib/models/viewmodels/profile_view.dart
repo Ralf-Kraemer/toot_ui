@@ -31,23 +31,22 @@ class _ProfileViewState extends State<ProfileView>
 
   Future<void> _loadProfile() async {
 
-    String? _url = widget.url ?? await _helper.getHomeInstanceName();
+    final _url = Uri.parse(widget.url!).host;
 
     try {
 
       var data;
 
-      if (widget.username != null) {
-        print('fetching id by username');
-        final preload = await _helper.getUserByUsername(_url!, widget.username!);
-        String _id = preload!.id;
-        data = await _helper.getProfile(_url, _id);
-
-      } else {
-
+      if (widget.userId != null) {
         data = widget.userId != null
-            ? await _helper.getProfile(_url!, widget.userId!)
-            : await _helper.getProfile(_url!, 'verify_credentials');
+            ? await _helper.getProfile(_url.toString(), widget.userId!)
+            : await _helper.getProfile(_url.toString(), 'verify_credentials');
+
+      } else if (widget.username != null) {
+        print('fetching id by username');
+        final preload = await _helper.getUserByUsername(_url.toString(), widget.username!);
+        String _id = preload!.id;
+        data = await _helper.getProfile(_url.toString(), _id);
 
       }
 

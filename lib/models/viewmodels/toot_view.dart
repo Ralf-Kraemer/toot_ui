@@ -62,66 +62,63 @@ class _TootViewState extends State<TootView> {
         borderRadius: const BorderRadius.all(Radius.circular(5)),
         border: Border.all(
           width: 0.6,
-          color: theme.dividerColor,
+          color: Colors.blueGrey,
         ),
         color: widget.backgroundColor ?? colorScheme.surface,
       ),
       child: Column(
         children: <Widget>[
-          GestureDetector(
-            onTap: () => openUrl(t.url ?? ""),
-            child: Padding(
-              padding: const EdgeInsets.only(left: 15, right: 15, top: 15),
-              child: Column(
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ProfileView(userId: t.account.id, url: t.account.url,),
-                          ),
-                        );
-                      },
-                      child: Stack(
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              ProfileImage(toot: t),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 8.0),
-                                  child: Byline(
-                                    t,
-                                    ViewMode.standard,
-                                    userNameStyle: theme.textTheme.titleMedium
-                                        ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                    showDate: false,
-                                    userScreenNameStyle:
-                                        defaultEmbeddedUserNameStyle,
+          Padding(
+            padding: const EdgeInsets.only(left: 15, right: 15, top: 15),
+            child: Column(
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ProfileView(userId: t.account.id, url: t.account.url,),
+                        ),
+                      );
+                    },
+                    child: Stack(
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            ProfileImage(toot: t),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Byline(
+                                  t,
+                                  ViewMode.standard,
+                                  userNameStyle: theme.textTheme.titleMedium
+                                      ?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: colorScheme.onSurface,
                                   ),
+                                  showDate: false,
+                                  userScreenNameStyle:
+                                      defaultEmbeddedUserNameStyle,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: TextSpan(
-                      style: theme.textTheme.bodyMedium,
-                      children: parseMastodonHtml(t.content, context),
-                    ),
+                ),
+                const SizedBox(height: 8),
+                RichText(
+                  text: TextSpan(
+                    style: theme.textTheme.bodyMedium,
+                    children: parseMastodonHtml(t.content, context),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           if (t.mediaUrls.isNotEmpty)
@@ -136,15 +133,13 @@ class _TootViewState extends State<TootView> {
                 options: CarouselOptions(height: 400),
               ),
             ),
-          Divider(color: theme.dividerColor, thickness: 0.4,),
+          Divider(color: Colors.blueGrey, thickness: 0.3,),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
             child: Row(
               children: <Widget>[
                 GestureDetector(
                   onTap: () async {
-                    final token = await helper.getAccessToken();
-                    if (token == null) return;
                     if (t.reblogged) {
                       final r = await helper.unboostStatus(t.id, t.url!);
                       if (r.statusCode == 200) {

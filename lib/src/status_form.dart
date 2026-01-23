@@ -129,6 +129,7 @@ class _StatusFormState extends State<StatusForm> {
                 controller: _statusController,
                 minLines: 2,
                 maxLines: 5,
+                maxLength: 500,
                 expands: true,
                 decoration: const InputDecoration(
                   labelText: 'What’s happening?',
@@ -138,7 +139,7 @@ class _StatusFormState extends State<StatusForm> {
                     v == null || v.trim().isEmpty || v.trim().length > 500
                         ? 'Must be 1-500 characters'
                         : null,
-              ),
+              ),/*
               const SizedBox(height: 5),
               TextField(
                 controller: _spoilerController,
@@ -146,7 +147,7 @@ class _StatusFormState extends State<StatusForm> {
                   labelText: 'Warning (optional)',
                   border: OutlineInputBorder(),
                 ),
-              ),
+              ),*/
               const SizedBox(height: 5),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -167,10 +168,10 @@ class _StatusFormState extends State<StatusForm> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _selectedMedia.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, __) => const SizedBox(width: 9),
                     itemBuilder: (_, index) {
                       return ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(9),
                         child: Image.file(
                           File(_selectedMedia[index].path),
                           width: 90,
