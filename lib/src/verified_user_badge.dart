@@ -15,7 +15,11 @@ class VerifiedUsedBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return (toot.account.verified)
-        ? Icon(Icons.verified)
-        : Container();
+        ? Text(
+            '🤖',
+            style: TextStyle(
+              fontSize: viewMode == ViewMode.compact ? 18 : 24,
+            ),
+        ) : const SizedBox.shrink();
   }
 }

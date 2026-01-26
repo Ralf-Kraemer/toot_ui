@@ -1,22 +1,12 @@
 import 'dart:convert';
 
-/// Users in Mastodon are represented by accounts. They can post statuses, follow others, and be mentioned.
 class MastodonUser {
-  /// The unique identifier for this user.
   String id;
   String? url;
-
-  /// The display name of the user. Not necessarily a person's real name.
   String displayName;
-
-  /// The username (handle) of the user, unique within the instance.
   String username;
-
-  /// The URL to the user's avatar image.
+  bool verified; // currently mapped from bot
   String? avatarUrl;
-
-  /// Indicates if the account is verified (Mastodon has no global verification like Twitter, but users can verify via links).
-  bool verified;
 
   MastodonUser({
     required this.id,
@@ -27,15 +17,24 @@ class MastodonUser {
     this.avatarUrl,
   });
 
-  factory MastodonUser.fromRawJson(String str) => MastodonUser.fromJson(json.decode(str));
+  factory MastodonUser.fromRawJson(String str) =>
+      MastodonUser.fromJson(json.decode(str));
 
   factory MastodonUser.fromJson(Map<String, dynamic> json) => MastodonUser(
         id: json["id"],
         url: json["url"],
-        displayName: json["display_name"],
-        username: json["username"],
-        verified: json["bot"] ?? false, // Mastodon doesn't have verified accounts like Twitter
+        displayName: json["display_name"] ?? '',
+        username: json["username"] ?? '',
+        verified: json["bot"] ?? false, // or map a real verified field if your instance supports it
         avatarUrl: json["avatar"],
       );
 
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "url": url,
+        "display_name": displayName,
+        "username": username,
+        "bot": verified,
+        "avatar": avatarUrl,
+      };
 }

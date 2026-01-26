@@ -3,6 +3,9 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:flutter/material.dart';
+import 'package:html/parser.dart' as html_parser;
+import 'package:html/dom.dart' as dom;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toot_ui/models/api/v1/mastodonuser.dart';
@@ -22,6 +25,8 @@ class Helper {
       setPrefString('homeInstanceName', value);
 
   Future<String?> getHomeInstanceName() => getPrefString('homeInstanceName');
+
+
 
   // ===== Internal URL builder =====
   Future<Uri> _buildUrl(String instance, String path, [Map<String, String>? query]) async {
@@ -82,7 +87,7 @@ class Helper {
   Future<dynamic> _deleteJson(Uri url) => _requestJson('DELETE', url);
 
   // ===== Media upload =====
-  Future<List<int>> uploadMediaFiles(List<XFile> files) async {
+  Future<List<String>> uploadMediaFiles(List<XFile> files) async {
     if (files.isEmpty) return [];
 
     final token = await getAccessToken();
@@ -94,14 +99,12 @@ class Helper {
     }
 
     final host = instance.replaceAll(RegExp(r'^https?://'), '');
-    final uri = Uri.https(host, 'api/v2/media');
-    final mediaIds = <int>[];
+    final uri = Uri.https(host, '/api/v1/media'); // v1 endpoint
+    final mediaIds = <String>[];
 
     for (final file in files) {
       final f = File(file.path);
-      if (!await f.exists()) {
-        throw Exception('File does not exist: ${file.path}');
-      }
+      if (!await f.exists() || await f.length() == 0) continue; // skip bad files
 
       final mimeType = _detectMimeType(file.path.split('.').last.toLowerCase());
 
@@ -118,22 +121,21 @@ class Helper {
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final json = jsonDecode(response.body);
-        final id = json['id'];
-        if (id is int) {
-          mediaIds.add(id);
+        if (json is Map<String, dynamic> && json.containsKey('id')) {
+          mediaIds.add(json['id'].toString());
         } else {
-          throw FormatException('Media upload response missing id');
+          // log instead of crashing
+          print('Media upload response missing id: ${response.body}');
         }
       } else {
-        throw http.ClientException(
-          'Media upload failed: ${response.statusCode}',
-          uri,
-        );
+        print('Media upload failed: ${response.statusCode} ${response.body}');
       }
     }
 
     return mediaIds;
   }
+
+
 
   String _detectMimeType(String ext) {
     switch (ext) {
@@ -155,45 +157,53 @@ class Helper {
     }
   }
 
-  // ===== Status actions =====
+  
+  // ===== Posting a status with optional media =====
   Future<dynamic> postStatus(
     String status, {
     String? inReplyToId,
     bool? sensitive,
     bool? private,
     String? spoilerText,
-    List<int>? mediaIDs,
-    List<XFile>? mediaFiles, // new optional parameter
+    List<XFile>? mediaFiles, // send files directly
   }) async {
-    // If media files are provided, upload them first
-    if (mediaFiles != null && mediaFiles.isNotEmpty) {
-      mediaIDs = await uploadMediaFiles(mediaFiles);
-    }
-
     final _i = await getHomeInstanceName();
     final url = await _buildUrl(_i!, '/api/v1/statuses');
-    final body = <String, dynamic>{'status': status};
 
+    final mediaIDs =
+        mediaFiles != null && mediaFiles.isNotEmpty ? await uploadMediaFiles(mediaFiles) : null;
+
+    final body = <String, dynamic>{'status': status};
     if (inReplyToId != null) body['in_reply_to_id'] = inReplyToId;
     if (sensitive != null) body['sensitive'] = sensitive;
     if (private != null) body['visibility'] = private ? 'private' : 'public';
-    if (spoilerText != null) body['spoiler_text'] = spoilerText;
+    if (spoilerText != null && spoilerText.isNotEmpty) body['spoiler_text'] = spoilerText;
     if (mediaIDs != null && mediaIDs.isNotEmpty) body['media_ids'] = mediaIDs;
 
     return _postJson(url, body);
   }
 
 
-  Future<dynamic> boostStatus(String statusId, String? url) async =>
-      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/reblog'));
-  Future<dynamic> unboostStatus(String statusId, String? url) async =>
-      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/unreblog'));
-  Future<dynamic> favouriteStatus(String statusId, String? url) async =>
-      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/favourite'));
-  Future<dynamic> unfavouriteStatus(String statusId, String? url) async =>
-      _postJson(await _buildUrl(url!, '/api/v1/statuses/$statusId/unfavourite'));
-  Future<dynamic> deleteStatus(String statusId, String? url) async =>
-      _deleteJson(await _buildUrl(url!, '/api/v1/statuses/$statusId'));
+  Future<dynamic> boostStatus(String statusId) async {
+      final _url = await getHomeInstanceName();
+      return await _postJson(await _buildUrl(_url!, '/api/v1/statuses/$statusId/reblog'));
+  }
+  Future<dynamic> unboostStatus(String statusId) async {
+      final _url = await getHomeInstanceName();
+      return await _postJson(await _buildUrl(_url!, '/api/v1/statuses/$statusId/unreblog'));
+  }
+  Future<dynamic> favouriteStatus(String statusId) async {
+      final _url = await getHomeInstanceName();
+      return await _postJson(await _buildUrl(_url!, '/api/v1/statuses/$statusId/favourite'));
+  }
+  Future<dynamic> unfavouriteStatus(String statusId) async {
+      final _url = await getHomeInstanceName();
+      return await _postJson(await _buildUrl(_url!, '/api/v1/statuses/$statusId/unfavourite'));
+  }
+  Future<dynamic> deleteStatus(String statusId) async {
+      final url = await getHomeInstanceName();
+      return await _deleteJson(await _buildUrl(url!, '/api/v1/statuses/$statusId'));
+  }
 
   // ===== Timeline helpers =====
   Future<List<dynamic>> _fetchTimeline(String path, {int? limit, String? url, String? maxId, String? sinceId}) async {
@@ -243,8 +253,10 @@ class Helper {
   // ===== Profile reading/writing =====
 
   /// Get any user's profile by ID
-  Future<Map<String, dynamic>> getProfile(String url, String userId) async {
-    final json = await _getJson(await _buildUrl(url, '/api/v1/accounts/$userId'));
+  Future<Map<String, dynamic>> getProfile(String userId) async {
+    print('Fetching profile for userId: $userId');
+    final _url = await getHomeInstanceName();
+    final json = await _getJson(await _buildUrl(_url!, '/api/v1/accounts/$userId'));
     if (json is Map<String, dynamic>) {
       return {
         'id': json['id'],
@@ -384,6 +396,177 @@ Future<void> clearOwnAccountInfo() async {
   await removeKey(_keyOwnHeader);
 }
 
+Future<Map<String, dynamic>> search({
+  required String query,
+  bool resolve = true,
+  int? limit,
+  String? type, // "accounts", "statuses", "hashtags"
+}) async {
+  final _i = await getHomeInstanceName();
+  if (_i == null) throw StateError('Home instance name is not set');
+
+  final params = <String, String>{
+    'q': query,
+    'resolve': resolve ? 'true' : 'false',
+  };
+
+  if (limit != null) params['limit'] = limit.toString();
+  if (type != null) params['type'] = type;
+
+  final url = await _buildUrl(_i, '/api/v2/search', params);
+  final json = await _getJson(url);
+
+  if (json is Map<String, dynamic>) {
+    return json;
+  }
+
+  throw FormatException('Invalid search response');
+}
+
+/// Fetch follow suggestions for the current user
+Future<List<dynamic>> getAccountSuggestions() async {
+  final _i = await getHomeInstanceName();
+  if (_i == null) throw StateError('Home instance name is not set');
+
+  final url = await _buildUrl(_i, '/api/v2/suggestions');
+  final json = await _getJson(url);
+
+  if (json is List) {
+    // Unwrap { source, account } → return only the account maps
+    return json
+        .whereType<Map<String, dynamic>>()
+        .map((item) {
+          final account = item['account'];
+          if (account is Map<String, dynamic>) {
+            return account;
+          }
+          return null;
+        })
+        .where((e) => e != null)
+        .toList();
+  }
+
+  throw FormatException('Invalid suggestions response');
+}
+
+
+/// Remove (dismiss) a suggestion so it won't be shown again
+Future<void> dismissAccountSuggestion(String accountId) async {
+  final _i = await getHomeInstanceName();
+  if (_i == null) throw StateError('Home instance name is not set');
+
+  final url = await _buildUrl(_i, '/api/v2/suggestions/$accountId');
+
+  // API expects DELETE, no response body
+  await _deleteJson(url);
+}
+
+
+/// Fetch trending hashtags
+Future<List<dynamic>> getTrendingHashtags({int? limit}) async {
+  final _i = await getHomeInstanceName();
+  if (_i == null) throw StateError('Home instance name is not set');
+
+  final params = <String, String>{};
+  if (limit != null) params['limit'] = limit.toString();
+
+  final url = await _buildUrl(_i, '/api/v1/trends/tags', params.isEmpty ? null : params);
+  final json = await _getJson(url);
+
+  if (json is List) {
+    return json;
+  }
+
+  throw FormatException('Invalid trending hashtags response');
+}
+
+/// Fetch trending statuses
+Future<List<dynamic>> getTrendingStatuses({int? limit}) async {
+  final _i = await getHomeInstanceName();
+  if (_i == null) throw StateError('Home instance name is not set');
+
+  final params = <String, String>{};
+  if (limit != null) params['limit'] = limit.toString();
+
+  final url = await _buildUrl(_i, '/api/v1/trends/statuses', params.isEmpty ? null : params);
+  final json = await _getJson(url);
+
+  if (json is List) {
+    return json;
+  }
+
+  throw FormatException('Invalid trending statuses response');
+}
+
+Future<dynamic> followAccount(String accountId) async {
+  final _i = await getHomeInstanceName();
+  return _postJson(await _buildUrl(_i!, '/api/v1/accounts/$accountId/follow'));
+}
+
+Future<dynamic> unfollowAccount(String accountId) async {
+  final _i = await getHomeInstanceName();
+  return _postJson(await _buildUrl(_i!, '/api/v1/accounts/$accountId/unfollow'));
+}
+
+// ===== Mute / Unmute =====
+Future<dynamic> muteAccount(String accountId, {bool? notifications}) async {
+  final _i = await getHomeInstanceName();
+  final body = notifications != null ? {'notifications': notifications} : null;
+  return _postJson(await _buildUrl(_i!, '/api/v1/accounts/$accountId/mute'), body);
+}
+
+Future<dynamic> unmuteAccount(String accountId) async {
+  final _i = await getHomeInstanceName();
+  return _postJson(await _buildUrl(_i!, '/api/v1/accounts/$accountId/unmute'));
+}
+
+// ===== Block / Unblock =====
+Future<dynamic> blockAccount(String accountId) async {
+  final _i = await getHomeInstanceName();
+  return _postJson(await _buildUrl(_i!, '/api/v1/accounts/$accountId/block'));
+}
+
+Future<dynamic> unblockAccount(String accountId) async {
+  final _i = await getHomeInstanceName();
+  return _postJson(await _buildUrl(_i!, '/api/v1/accounts/$accountId/unblock'));
+}
+
+// ===== Report Status =====
+Future<dynamic> reportStatus(
+  String statusId, {
+  required String comment,
+  List<String>? categories, // e.g., ["spam", "violence"]
+  List<String>? forward, // account IDs to forward the report to
+}) async {
+  final _i = await getHomeInstanceName();
+  final body = <String, dynamic>{
+    'comment': comment,
+    if (categories != null) 'categories': categories,
+    if (forward != null) 'forward': forward,
+  };
+  return _postJson(await _buildUrl(_i!, '/api/v1/reports'), {
+    'status_ids': [statusId],
+    ...body,
+  });
+}
+
+// ===== Report Account =====
+Future<dynamic> reportAccount(
+  String accountId, {
+  required String comment,
+  List<String>? categories,
+  List<String>? forward,
+}) async {
+  final _i = await getHomeInstanceName();
+  final body = <String, dynamic>{
+    'account_id': accountId,
+    'comment': comment,
+    if (categories != null) 'categories': categories,
+    if (forward != null) 'forward': forward,
+  };
+  return _postJson(await _buildUrl(_i!, '/api/v1/reports'), body);
+}
+
 Future<void> setVideoCategoryInterests(List<String> interests){
   return setPrefString('videoCategoryInterests', jsonEncode(interests));
 }
@@ -395,6 +578,36 @@ Future<List<String>> getVideoCategoryInterests() async {
     return decoded.whereType<String>().toList();
   }
   return [];
+}
+
+Future<List<Map<String, dynamic>>> getRelationships(List<String> accountIds) async {
+  if (accountIds.isEmpty) return [];
+
+  final _i = await getHomeInstanceName();
+  final params = <String, String>{
+    'id[]': accountIds.join(','), // Mastodon expects multiple ids as repeated query param
+  };
+
+  // Workaround: repeated params via query string
+  final queryString = accountIds.map((id) => 'id[]=$id').join('&');
+  final url = await _buildUrl(_i!, '/api/v1/accounts/relationships?$queryString');
+
+  final json = await _getJson(url);
+  if (json is List) {
+    return json
+        .whereType<Map<String, dynamic>>()
+        .map((r) => Map<String, dynamic>.from(r))
+        .toList();
+  }
+
+  throw FormatException('Invalid relationships response');
+}
+
+/// Fetch relationship for a single account
+Future<Map<String, dynamic>?> getRelationship(String accountId) async {
+  final list = await getRelationships([accountId]);
+  if (list.isNotEmpty) return list.first;
+  return null;
 }
 
 /// Log out the current user by clearing all local credentials

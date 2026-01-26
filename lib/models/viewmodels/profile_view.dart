@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:toot_ui/src/parsed_html.dart';
 import 'package:toot_ui/toot_ui.dart';
 import 'profile_custom.dart';
 
@@ -30,27 +31,20 @@ class _ProfileViewState extends State<ProfileView>
   }
 
   Future<void> _loadProfile() async {
-
-    final _url = Uri.parse(widget.url!).host;
-
     try {
-
-      var data;
+      Map<String, dynamic> data;
 
       if (widget.userId != null) {
-        data = widget.userId != null
-            ? await _helper.getProfile(_url.toString(), widget.userId!)
-            : await _helper.getProfile(_url.toString(), 'verify_credentials');
-
-      } else if (widget.username != null) {
-        print('fetching id by username');
-        final preload = await _helper.getUserByUsername(_url.toString(), widget.username!);
-        String _id = preload!.id;
-        data = await _helper.getProfile(_url.toString(), _id);
-
+        data = await _helper.getProfile(widget.userId!);
+      } else if (widget.username != null && widget.url != null) {
+        final _url = Uri.parse(widget.url!);
+        final preload =
+            await _helper.getUserByUsername(_url.host, widget.username!);
+        data = await _helper.getProfile(preload!.id);
+      } else {
+        data = await _helper.getProfile('verify_credentials');
       }
 
-      // Convert Mastodon / ActivityPub custom fields to ProfileCustomNode
       final rawFields = List<Map<String, dynamic>>.from(data['custom_fields'] ?? []);
       final nodes = rawFields.take(4).map((f) {
         return ProfileCustomNode.fromField({
@@ -71,37 +65,52 @@ class _ProfileViewState extends State<ProfileView>
   @override
   Widget build(BuildContext context) {
     if (_profileData == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
+    final displayName = _profileData?['display_name'] ?? '';
+    final username = _profileData?['username'] ?? '';
+    final url = _profileData?['url'] ?? '';
+    final avatar = _profileData?['avatar'] ?? '';
+    final header = _profileData?['header'] ?? '';
+    final statuses = _profileData?['statuses_count']?.toString() ?? '0';
+    final followers = _profileData?['followers_count']?.toString() ?? '0';
+    final following = _profileData?['following_count']?.toString() ?? '0';
+
+    String hostPart = '';
+    try {
+      hostPart = Uri.parse(url).host;
+    } catch (_) {}
+
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text('@$username'),
+      ),
       body: Column(
         children: [
-          // ===== Header section =====
           Stack(
             children: [
               SizedBox(
                 height: 200,
                 width: double.infinity,
-                child: _profileData!['header'] != null &&
-                        _profileData!['header'].isNotEmpty
-                    ? Image.network(
-                        _profileData!['header'],
-                        fit: BoxFit.cover,
-                      )
+                child: header.isNotEmpty
+                    ? Image.network(header, fit: BoxFit.cover)
                     : Container(color: Colors.grey[300]),
               ),
               Positioned(
                 left: 16,
-                bottom: 0,
+                bottom: 16,
                 child: CircleAvatar(
                   radius: 40,
-                  backgroundImage: _profileData!['avatar'] != null &&
-                          _profileData!['avatar'].isNotEmpty
-                      ? NetworkImage(_profileData!['avatar'])
-                      : null,
-                  child: _profileData!['avatar'] == null ||
-                          _profileData!['avatar'].isEmpty
+                  backgroundImage:
+                      avatar.isNotEmpty ? NetworkImage(avatar) : null,
+                  child: avatar.isEmpty
                       ? const Icon(Icons.person, size: 40)
                       : null,
                 ),
@@ -109,32 +118,59 @@ class _ProfileViewState extends State<ProfileView>
               Positioned(
                 left: 16 + 80 + 16,
                 bottom: 16,
-                child: Text(
-                  _profileData!['display_name'] ?? '',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black54,
-                        offset: Offset(0, 1),
-                        blurRadius: 2,
-                      )
-                    ],
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black54,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          )
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '@$username${hostPart.isNotEmpty ? '@$hostPart' : ''}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black45,
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          )
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _buildStat(statuses, 'Toots'),
+                        const SizedBox(width: 16),
+                        _buildStat(followers, 'Followers'),
+                        const SizedBox(width: 16),
+                        _buildStat(following, 'Following'),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-
-          // ===== Summary =====
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text(_profileData!['note'] ?? ''),
+            child: ParsedHtml(
+              html: _profileData?['note'] ?? '',
+            ),
           ),
-
-          // ===== Tabs =====
           TabBar(
             controller: _tabController,
             labelColor: Theme.of(context).primaryColor,
@@ -145,8 +181,6 @@ class _ProfileViewState extends State<ProfileView>
               Tab(text: 'Profile'),
             ],
           ),
-
-          // ===== Tab views =====
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -164,9 +198,29 @@ class _ProfileViewState extends State<ProfileView>
     );
   }
 
+  Widget _buildStat(String count, String label) {
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: Colors.white70, fontSize: 14),
+        children: [
+          TextSpan(
+            text: count,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const TextSpan(text: ' '),
+          TextSpan(text: label),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
 }
+

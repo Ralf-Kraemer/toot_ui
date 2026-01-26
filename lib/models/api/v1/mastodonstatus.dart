@@ -1,40 +1,23 @@
 import 'dart:convert';
 import 'package:toot_ui/models/api/v1/mastodonuser.dart';
 
-/// Represents a status update (post) in Mastodon.
 class MastodonStatus {
-  /// The unique identifier for this status.
   String id;
   String? uri;
   String? url;
-
-  /// The creation timestamp of the status.
   String createdAt;
-
-  /// The content of the status (HTML formatted).
   String content;
-
-  /// The user who posted this status.
   MastodonUser account;
-
-  /// Nullable. If the status is a boost (reblog), this contains the original status.
   MastodonStatus? reblog;
 
-  /// The number of favourites (likes) this status has received.
   int favouritesCount;
   bool favourited;
-
-  /// The number of reblogs (boosts) this status has received.
   int reblogsCount;
   bool reblogged;
-
-  /// The number of replies this status has received.
   int repliesCount;
-
   bool bookmarked;
 
   List<String> mediaUrls;
-
 
   MastodonStatus({
     required this.id,
@@ -53,22 +36,39 @@ class MastodonStatus {
     required this.mediaUrls,
   });
 
-  factory MastodonStatus.fromRawJson(String str) => MastodonStatus.fromJson(json.decode(str));
+  factory MastodonStatus.fromJson(Map<String, dynamic> json) {
+    // If reblog exists, we take media/content from the reblog
+    final reblogJson = json['reblog'];
+    final isReblog = reblogJson != null;
 
-  factory MastodonStatus.fromJson(Map<String, dynamic> json) => MastodonStatus(
-        id: json["id"],
-        uri: json["uri"],
-        url: json["url"],
-        createdAt: json["created_at"],
-        content: json["content"],
-        account: MastodonUser.fromJson(json["account"]),
-        reblog: json["reblog"] != null ? MastodonStatus.fromJson(json["reblog"]) : null,
-        favouritesCount: json["favourites_count"],
-        favourited: json["favourited"],
-        reblogsCount: json["reblogs_count"],
-        reblogged: json["reblogged"],
-        repliesCount: json["replies_count"],
-        bookmarked: json["bookmarked"],
-        mediaUrls: json["media_attachments"]
-      );
+    final originalContent = isReblog ? reblogJson['content'] ?? '' : json['content'] ?? '';
+    final originalMediaAttachments = isReblog
+        ? reblogJson['media_attachments'] ?? []
+        : json['media_attachments'] ?? [];
+
+    // Extract media URLs
+    final mediaUrls = <String>[];
+    for (var m in originalMediaAttachments) {
+      if (m['url'] != null) mediaUrls.add(m['url']);
+    }
+
+    return MastodonStatus(
+      id: json['id'],
+      uri: json['uri'],
+      url: json['url'],
+      createdAt: json['created_at'],
+      content: originalContent,
+      account: MastodonUser.fromJson(json['account']),
+      reblog: isReblog ? MastodonStatus.fromJson(reblogJson) : null,
+      favouritesCount: json['favourites_count'] ?? 0,
+      favourited: json['favourited'] ?? false,
+      reblogsCount: json['reblogs_count'] ?? 0,
+      reblogged: json['reblogged'] ?? false,
+      repliesCount: json['replies_count'] ?? 0,
+      bookmarked: json['bookmarked'] ?? false,
+      mediaUrls: mediaUrls,
+    );
+  }
+
+  factory MastodonStatus.fromRawJson(String str) => MastodonStatus.fromJson(json.decode(str));
 }

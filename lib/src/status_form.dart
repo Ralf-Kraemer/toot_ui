@@ -56,21 +56,18 @@ class _StatusFormState extends State<StatusForm> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isPosting = true);
-    List<int> mediaIds = [];
-    try {
-      mediaIds = await Helper.get().uploadMediaFiles(_selectedMedia);
-    } catch (_) {}
 
     try {
+      // Pass media files directly — Helper will upload them internally
       final result = await Helper.get().postStatus(
         _statusController.text.trim(),
         inReplyToId: widget.inReplyToId,
         sensitive: _sensitive,
         private: _private,
-        mediaIDs: mediaIds,
         spoilerText: _spoilerController.text.trim().isEmpty
             ? null
             : _spoilerController.text.trim(),
+        mediaFiles: _selectedMedia, // ✅ pass the picked XFiles here
       );
 
       if (mounted) {
@@ -78,16 +75,15 @@ class _StatusFormState extends State<StatusForm> {
           const SnackBar(content: Text('Status posted successfully!')),
         );
 
-        if (result != null) {
-          _statusController.clear();
-          _spoilerController.clear();
-          _selectedMedia = [];
-        }
-
-        setState(() => _sensitive = false);
+        // Clear form
+        _statusController.clear();
+        _spoilerController.clear();
+        _selectedMedia = [];
+        _sensitive = false;
 
         // Trigger parent callback if any
         widget.onPost?.call();
+        setState(() {});
       }
     } catch (e) {
       if (mounted) {
@@ -99,6 +95,7 @@ class _StatusFormState extends State<StatusForm> {
       if (mounted) setState(() => _isPosting = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +127,6 @@ class _StatusFormState extends State<StatusForm> {
                 minLines: 2,
                 maxLines: 5,
                 maxLength: 500,
-                expands: true,
                 decoration: const InputDecoration(
                   labelText: 'What’s happening?',
                   border: OutlineInputBorder(),
@@ -139,15 +135,7 @@ class _StatusFormState extends State<StatusForm> {
                     v == null || v.trim().isEmpty || v.trim().length > 500
                         ? 'Must be 1-500 characters'
                         : null,
-              ),/*
-              const SizedBox(height: 5),
-              TextField(
-                controller: _spoilerController,
-                decoration: const InputDecoration(
-                  labelText: 'Warning (optional)',
-                  border: OutlineInputBorder(),
-                ),
-              ),*/
+              ),
               const SizedBox(height: 5),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -220,32 +208,42 @@ class _StatusFormState extends State<StatusForm> {
       ),
     );
 
-    if (!widget.showCancel) return formContent;
+    Widget content = formContent;
 
-    return Stack(
-      fit: StackFit.loose,
-      alignment: Alignment.center,
-      children: [
-        Container(
-          color: Colors.black54,
-          width: double.infinity,
-          height: double.infinity,
-        ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            formContent,
-            IconButton(
-              icon: const Icon(Icons.cancel),
-              iconSize: 64,
-              onPressed: () {
-                widget.onCancel?.call();
-              },
-            ),
-          ],
-        ),
-      ],
+    if (widget.showCancel) {
+      content = Stack(
+        fit: StackFit.loose,
+        alignment: Alignment.center,
+        children: [
+          Container(
+            color: Colors.black54,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              formContent,
+              IconButton(
+                icon: const Icon(Icons.cancel),
+                iconSize: 64,
+                onPressed: () {
+                  widget.onCancel?.call();
+                },
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Wrap everything in GestureDetector to close the keyboard
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque, // ensures taps on empty space are detected
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: content,
     );
   }
+
 }

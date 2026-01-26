@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:toot_ui/src/url_launcher.dart';
 import 'package:toot_ui/src/verified_user_badge.dart';
 import 'package:toot_ui/src/view_mode.dart';
 import 'package:toot_ui/toot_ui.dart';
 
-/// Widget that displays user name, user screen name (the @ name), if the user is verified
-class Byline extends StatelessWidget {
+class Byline extends StatefulWidget {
   const Byline(
     this.toot,
     this.viewMode, {
@@ -22,125 +23,127 @@ class Byline extends StatelessWidget {
   final ViewMode viewMode;
 
   @override
-  Widget build(BuildContext context) {
-    final bool createdDateAvailable =
-        toot.createdAt != "";
+  State<Byline> createState() => _BylineState();
+}
 
-    switch (viewMode) {
+class _BylineState extends State<Byline> {
+  Timer? _timer;
+  String? _relativeTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateRelativeTime();
+    // Update relative time every minute
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      _updateRelativeTime();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant Byline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recalculate if toot changes
+    if (oldWidget.toot.createdAt != widget.toot.createdAt) {
+      _updateRelativeTime();
+    }
+  }
+
+  void _updateRelativeTime() {
+    if (widget.toot.createdAt.isEmpty) return;
+
+    try {
+      final dt = DateTime.parse(widget.toot.createdAt).toLocal();
+      final locale = Localizations.localeOf(context).languageCode;
+
+      final newTime = timeago.format(dt, locale: locale, allowFromNow: true);
+
+      if (mounted) {
+        setState(() => _relativeTime = newTime);
+      }
+    } catch (_) {
+      // fallback: ISO string
+      if (mounted) setState(() => _relativeTime = widget.toot.createdAt);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool showDate = widget.showDate && _relativeTime != null;
+
+    switch (widget.viewMode) {
       case ViewMode.standard:
         return Column(
-          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.max,
-          children: <Widget>[
+          children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.max,
-              children: <Widget>[
+              children: [
                 Flexible(
                   child: Text(
-                    toot.account.displayName,
-                    textAlign: TextAlign.start,
-                    style: userNameStyle,
+                    widget.toot.account.displayName,
+                    style: widget.userNameStyle,
                     maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 2.0, right: 20),
-                  child: VerifiedUsedBadge(toot, viewMode),
-                ),
+                const SizedBox(width: 2),
+                VerifiedUsedBadge(widget.toot, widget.viewMode),
               ],
             ),
-            toot.account.username.isNotEmpty
-                ? (showDate
-                    ? Text(
-                        "@" +
-                            toot.account.username +
-                            (createdDateAvailable
-                                ? " • ${toot.createdAt}"
-                                : ""),
-                        textAlign: TextAlign.start,
-                        style: userScreenNameStyle,
-                      )
-                    : Text(
-                        "@" + toot.account.username,
-                        textAlign: TextAlign.start,
-                        style: userScreenNameStyle,
-                      ))
-                : const SizedBox.shrink(),
+            if (widget.toot.account.username.isNotEmpty)
+              Text(
+                "@${widget.toot.account.username}" +
+                    (showDate ? " • $_relativeTime" : ""),
+                style: widget.userScreenNameStyle,
+              ),
           ],
         );
+
       case ViewMode.compact:
       case ViewMode.quote:
         return Row(
-          mainAxisSize: MainAxisSize.max,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
+          children: [
             Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTap: () {
-                  openUrl(toot.account.url?? "");
-                },
+                onTap: () => openUrl(widget.toot.account.url ?? ""),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: <Widget>[
-                    if (toot.account.username.isNotEmpty)
+                  children: [
+                    if (widget.toot.account.username.isNotEmpty)
                       Text(
-                        toot.account.username,
-                        style: userNameStyle,
-                        textAlign: TextAlign.start,
+                        widget.toot.account.username,
+                        style: widget.userNameStyle,
                       ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 2.0),
-                      child: VerifiedUsedBadge(
-                          toot, viewMode),
-                    ),
-                    if (toot.account.username.isNotEmpty)
+                    const SizedBox(width: 2),
+                    VerifiedUsedBadge(widget.toot, widget.viewMode),
+                    if (widget.toot.account.username.isNotEmpty)
                       Flexible(
                         child: Padding(
                           padding: const EdgeInsets.only(left: 4.0),
                           child: Text(
-                            "@" + toot.account.username,
-                            style: userScreenNameStyle,
+                            "@${widget.toot.account.username}" +
+                                (showDate ? " • $_relativeTime" : ""),
+                            style: widget.userScreenNameStyle,
                             maxLines: 1,
-                            overflow: TextOverflow.fade,
-                            softWrap: false,
-                            textAlign: TextAlign.start,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),
-                    (showDate == true)
-                        ? Flexible(
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 4.0),
-                              child: Text(
-                                "• " +
-                                    (toot.createdAt ?? ""),
-                                style: userScreenNameStyle,
-                                maxLines: 1,
-                                overflow: TextOverflow.fade,
-                                softWrap: false,
-                                textAlign: TextAlign.start,
-                              ),
-                            ),
-                          )
-                        : Container(),
                   ],
                 ),
               ),
             ),
-            Icon(Icons.alternate_email),
+            const Icon(Icons.alternate_email),
           ],
         );
-      default:
 
-        /// should never happen
+      default:
         return Container();
     }
   }

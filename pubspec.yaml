@@ -22,10 +22,15 @@ dependencies:
   carousel_slider: ^5.0.0
   share_plus: ^11.0.0
   shared_preferences: ^2.5.4
+  better_player:
+    git:
+      url: https://github.com/Ralf-Kraemer/better_player.git
   activitypub:
     git:
       url: https://github.com/Ralf-Kraemer/fedodo_ActivityPub.git
   image_picker: ^1.2.1
+  timeago: ^3.7.1
+  flutter_localization: ^0.3.3
 dev_dependencies:
   build_runner: ^2.1.8
   json_serializable: ^6.1.5
